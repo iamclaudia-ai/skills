@@ -51,6 +51,26 @@ Whatever was worth saying and did not survive the trim **lands here** — an inl
 on the PR. That is the release valve that makes terse source comments safe: the reviewer still gets
 the full reasoning, and the next reader of that function does not pay for it on every visit.
 
+## Where this runs: the current checkout, deliberately
+
+Self-review is the one review flow that belongs in the working checkout you are already sitting in.
+You just pushed this branch; the tree already holds exactly the code under review, and the mutation
+testing below rewrites **your own** files on **your own** branch. A worktree here would be worse than
+overhead — you would be reviewing a re-fetched copy rather than the thing you actually built.
+
+This is the opposite of `reviewing-prs-with-claudia`, which mandates a worktree. Both are correct,
+and the difference is not "review" vs "self-review" — it is **whose branch it is**:
+
+|                             | Branch             | Where                | Why                                                                                           |
+| --------------------------- | ------------------ | -------------------- | --------------------------------------------------------------------------------------------- |
+| Reviewing someone else's PR | theirs             | **worktree**         | checking it out in the shared checkout yanks the working tree from any other session mid-task |
+| Self-review                 | yours, just pushed | **current checkout** | you are already on it, and the mutations are yours to make                                    |
+
+**The edge case that trips this up:** if you are self-reviewing a PR you are _not_ currently on — a
+different session's branch, or your own from days ago — that is reviewing-someone-else's in disguise.
+Use a worktree. The deciding question is never who wrote it; it is whether getting to the code means
+moving a checkout somebody else may be standing in.
+
 ## Order of operations
 
 1. `gh pr create --draft` (always draft in swarm).
