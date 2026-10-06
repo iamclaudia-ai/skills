@@ -165,6 +165,7 @@ Manage tasks: `anima scheduler list_tasks`, `anima scheduler fire_now --taskId <
 
 Playlists and `.state` files live in **`~/.anima/skills/controlling-lights/playlists/`** (see the PATH GOTCHA above — always pass the absolute path):
 
+- `halloween.json` — 18 scenes: Halloween (Snoopy, Mickey, Hello Kitty, monsters, bats); shuffled so the 7 pumpkin scenes (incl. 🎃 and Jack O' Lanterns) never play back to back, wraparound included
 - `july-4th.json` — 11 scenes: 4th of July / USA 250th birthday (flags, RWB, gnome, America truck, two fireworks finales)
 - `may.json` — 12 scenes: Mother's Day, Cinco de Mayo, spring
 - `easter.json` — Easter DIY scenes
