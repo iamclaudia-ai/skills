@@ -255,7 +255,7 @@ Inspect status anytime with `anima skills task <task-id>`.
 Inspect:
 
 ```bash
-anima skills list writing-romance-novels
+anima skills commands writing-romance-novels
 anima skills help writing-romance-novels generate-audio
 ```
 

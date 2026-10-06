@@ -31,7 +31,7 @@ script, sets cwd, and injects env vars. Scripts no longer need a `cd` dance:
 anima skills run <skill-id> <command> [args...]      # synchronous
 anima skills run <skill-id> <command> [...] --task   # queue via scheduler
 anima skills task <task-id> --watch                  # poll a queued task
-anima skills list                                    # discovery
+anima skills commands                                    # discovery
 anima skills help <skill-id> <command>               # per-command help
 ```
 
@@ -258,7 +258,7 @@ anima skills run doing-something <command> /absolute/path/to/input
 ```json
 {
   "id": "doing-something",
-  "description": "Short description shown in `anima skills list`.",
+  "description": "Short description shown in `anima skills commands`.",
   "commands": {
     "<command-name>": {
       // Choose ONE: `script` for skill-local logic, `command` for a PATH binary
