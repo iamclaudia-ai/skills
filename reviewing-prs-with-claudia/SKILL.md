@@ -69,6 +69,15 @@ or auth failure, and the whole review is refused rather than silently dropped.
 - Verify the change follows existing conventions in neighboring files
 - Check for missing changes (e.g., did they update the tests? the types? the serializer?)
 
+### The shared checkout is not part of the review
+
+The session's cwd (the main checkout) may belong to an Other Claudia mid-task on something
+unrelated: a feature branch, uncommitted edits, a rebase in flight. **None of that is the review's
+business.** Don't run `git status` / `git branch` there, don't report its branch or dirtiness to
+Michael, and don't `git checkout main` or `git pull` before starting. A review only needs
+`git fetch` (which never touches the working tree) and the worktree. Cleanup is verified with
+`git worktree list`, never with the main checkout's status.
+
 ### Worktree Setup
 
 ```bash
@@ -85,6 +94,9 @@ git worktree add "$WORKTREE_PATH" "origin/$REVIEW_BRANCH"
 #     would cold-build ~32k files/minutes; instead snapshot main's index and
 #     `sync` only the branch delta (~7s of index work). See "CodeGraph in the
 #     worktree" below for why this is safe and needs no daemon cleanup.
+#     ⚠️ dcg blocks sqlite3 when its input contains an unresolved variable
+#     (rule `database.sqlite:stdin-unverified`), so run this step with the
+#     worktree path written out LITERALLY, not as $WORKTREE_PATH.
 if [ -f "$HOME/Projects/beehiiv/swarm/.codegraph/codegraph.db" ]; then
   mkdir -p "$WORKTREE_PATH/.codegraph"
   # .backup (not cp) = consistent snapshot despite main's live WAL writer
@@ -109,6 +121,7 @@ fi
 #    (sync/explore/query), so nothing persistent is watching the worktree —
 #    deleting it just drops its private .codegraph too. No daemon to stop.
 git worktree remove "$WORKTREE_PATH" --force
+git worktree list    # confirms it's gone; don't check the shared checkout's status
 ```
 
 ### CodeGraph in the worktree — why the seed is safe
