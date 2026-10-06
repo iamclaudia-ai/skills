@@ -143,7 +143,7 @@ Meditation scripts should be chunked for natural pauses:
 
 ## Available Commands
 
-This skill is invoked through the **anima skill runner** — long-running audio generation
+This skill is invoked through the **anima skills runner** — long-running audio generation
 auto-queues via the scheduler with live progress reporting.
 
 - **`generate-audio`** — Generate MP3 from meditation markdown using the shared `eleven-tts` binary (long-running, auto-queued)
@@ -151,7 +151,7 @@ auto-queues via the scheduler with live progress reporting.
 Inspect:
 
 ```bash
-anima skill help guiding-meditation generate-audio
+anima skills help guiding-meditation generate-audio
 ```
 
 For a one-off conversion (no task tracking, fully synchronous), `eleven-tts <path>` is also available directly on PATH — same script, same env vars, same behavior.
@@ -162,8 +162,8 @@ For a one-off conversion (no task tracking, fully synchronous), `eleven-tts <pat
 2. **Set the tone** - Use appropriate ElevenLabs v3 audio tags
 3. **Guide breathing** - Include specific breathing instructions with `[pauses]`
 4. **Save to markdown file** - Write meditation to `~/meditations/YYYY-MM-DD-session-name.md`
-5. **Generate MP3 audio** - `anima skill run guiding-meditation generate-audio <markdown-path>`
-   - Returns a task ID immediately. Watch progress: `anima skill task <task-id> --watch`
+5. **Generate MP3 audio** - `anima skills run guiding-meditation generate-audio <markdown-path>`
+   - Returns a task ID immediately. Watch progress: `anima skills task <task-id> --watch`
 6. **Ensure proper spacing** - Always add space after punctuation before tags
 7. **Include body awareness** - Progressive relaxation elements
 8. **Close gently** - Peaceful return to normal awareness with `[sigh]`

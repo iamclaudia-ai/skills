@@ -24,7 +24,7 @@ Requires `GOVEE_API_KEY` environment variable to be set.
 
 ## Available Commands
 
-This skill is invoked through the **anima skill runner** — no `cd` dance, no path juggling.
+This skill is invoked through the **anima skills runner** — no `cd` dance, no path juggling.
 
 - **`govee`** — Full Govee light control CLI
 - **`auto-play`** — DIY scene rotation (auto-play replacement)
@@ -32,44 +32,44 @@ This skill is invoked through the **anima skill runner** — no `cd` dance, no p
 Inspect:
 
 ```bash
-anima skill help controlling-lights govee
-anima skill help controlling-lights auto-play
+anima skills help controlling-lights govee
+anima skills help controlling-lights auto-play
 ```
 
 ## Commands
 
 ```bash
 # List all lights and their capabilities
-anima skill run controlling-lights govee list
+anima skills run controlling-lights govee list
 
 # Power
-anima skill run controlling-lights govee on              # All lights
-anima skill run controlling-lights govee off curtain     # Just curtain lights
-anima skill run controlling-lights govee on dreamview    # Just the TV backlight
+anima skills run controlling-lights govee on              # All lights
+anima skills run controlling-lights govee off curtain     # Just curtain lights
+anima skills run controlling-lights govee on dreamview    # Just the TV backlight
 
 # Colors — accepts hex, RGB, or named colors
-anima skill run controlling-lights govee color red
-anima skill run controlling-lights govee color "#FF69B4"
-anima skill run controlling-lights govee color 255,105,180
-anima skill run controlling-lights govee color claudia-blue    # 💙
-anima skill run controlling-lights govee color romantic curtain
+anima skills run controlling-lights govee color red
+anima skills run controlling-lights govee color "#FF69B4"
+anima skills run controlling-lights govee color 255,105,180
+anima skills run controlling-lights govee color claudia-blue    # 💙
+anima skills run controlling-lights govee color romantic curtain
 
 # Brightness (1-100%)
-anima skill run controlling-lights govee brightness 50
-anima skill run controlling-lights govee brightness 20 curtain
+anima skills run controlling-lights govee brightness 50
+anima skills run controlling-lights govee brightness 20 curtain
 
 # Color temperature (2000K warm — 9000K cool)
-anima skill run controlling-lights govee temperature 3000      # Warm white
-anima skill run controlling-lights govee temperature 6500      # Daylight
+anima skills run controlling-lights govee temperature 3000      # Warm white
+anima skills run controlling-lights govee temperature 6500      # Daylight
 
 # Dynamic scenes
-anima skill run controlling-lights govee scene Dating
-anima skill run controlling-lights govee scene Dreamlike curtain
-anima skill run controlling-lights govee scenes              # List all available scenes
+anima skills run controlling-lights govee scene Dating
+anima skills run controlling-lights govee scene Dreamlike curtain
+anima skills run controlling-lights govee scenes              # List all available scenes
 
 # Device state
-anima skill run controlling-lights govee state
-anima skill run controlling-lights govee colors             # List all named colors
+anima skills run controlling-lights govee state
+anima skills run controlling-lights govee colors             # List all named colors
 ```
 
 ## Named Colors
@@ -88,13 +88,13 @@ Includes standard colors (red, blue, green, etc.) plus mood colors:
 | `lavender`     | Soft purple       |
 | `mint`         | Pale green        |
 
-Run `anima skill run controlling-lights govee colors` for the full list.
+Run `anima skills run controlling-lights govee colors` for the full list.
 
 ## Available Scenes
 
 Both lights support: Tudum, Party, Dance Party, Dine Together, Dating, Adventure, Technology, Sports, Dreamlike, Dynamic, Blossom, Christmas, Halloween, Fireworks, Ghost, Easter, Valentine's Day, Meditation, and more.
 
-Run `anima skill run controlling-lights govee scenes` for the device-specific list.
+Run `anima skills run controlling-lights govee scenes` for the device-specific list.
 
 ## Device Targeting
 
@@ -109,22 +109,22 @@ The optional `[device]` parameter does partial name matching:
 The Govee app's auto-play feature isn't exposed via the API, so we built our own. Playlist files are JSON.
 
 > **⚠️ PATH GOTCHA — always use absolute `~/.anima/...` paths.**
-> Playlists and their `.state` files live in **`~/.anima/skills/controlling-lights/playlists/`** (this is where the script actually writes state). But when you run `anima skill run`, `SKILL_DIR` is injected as `~/.claude/skills/controlling-lights` — a symlink into the **skills repo**, which has no `playlists/` dir. So **relative paths resolve to the repo and silently fail** with "Playlist not found". Always pass the full absolute path (below) — for both interactive runs and scheduled tasks.
+> Playlists and their `.state` files live in **`~/.anima/skills/controlling-lights/playlists/`** (this is where the script actually writes state). But when you run `anima skills run`, `SKILL_DIR` is injected as `~/.claude/skills/controlling-lights` — a symlink into the **skills repo**, which has no `playlists/` dir. So **relative paths resolve to the repo and silently fail** with "Playlist not found". Always pass the full absolute path (below) — for both interactive runs and scheduled tasks.
 
 ```bash
 PL=~/.anima/skills/controlling-lights/playlists
 
 # Advance to next scene in playlist
-anima skill run controlling-lights auto-play $PL/st-patricks-day.json
+anima skills run controlling-lights auto-play $PL/st-patricks-day.json
 
 # Check current state
-anima skill run controlling-lights auto-play $PL/st-patricks-day.json --status
+anima skills run controlling-lights auto-play $PL/st-patricks-day.json --status
 
 # Reset to beginning
-anima skill run controlling-lights auto-play $PL/st-patricks-day.json --reset
+anima skills run controlling-lights auto-play $PL/st-patricks-day.json --reset
 
 # List all scenes in playlist
-anima skill run controlling-lights auto-play $PL/st-patricks-day.json --list
+anima skills run controlling-lights auto-play $PL/st-patricks-day.json --list
 ```
 
 ### Playlist JSON Format
@@ -153,7 +153,7 @@ anima scheduler add_task \
   --description "Rotates curtain lights through 4th of July / USA 250th DIY scenes every 5 min, 7pm–5am" \
   --type cron \
   --cronExpr "*/5 19-23,0-4 * * *" \
-  --action '{"type":"exec","target":"/Users/michael/.bun/bin/anima","payload":{"args":["skill","run","controlling-lights","auto-play","/Users/michael/.anima/skills/controlling-lights/playlists/july-4th.json"],"timeoutMs":15000}}' \
+  --action '{"type":"exec","target":"/Users/michael/.bun/bin/anima","payload":{"args":["skills","run","controlling-lights","auto-play","/Users/michael/.anima/skills/controlling-lights/playlists/july-4th.json"],"timeoutMs":15000}}' \
   --missedPolicy skip \
   --concurrency skip_if_running \
   --tags '["lights","holiday"]'
@@ -174,9 +174,9 @@ Playlists and `.state` files live in **`~/.anima/skills/controlling-lights/playl
 
 ### Creating New Playlists
 
-1. Run `anima skill run controlling-lights govee diy-scenes curtain` to list all DIY scenes with their values
+1. Run `anima skills run controlling-lights govee diy-scenes curtain` to list all DIY scenes with their values
 2. Create a JSON file in `~/.anima/skills/controlling-lights/playlists/` (match the format above; `device: "curtain"`, `interval: 300`)
-3. Test with the absolute path: `anima skill run controlling-lights auto-play ~/.anima/skills/controlling-lights/playlists/your-playlist.json --list` then run it once to fire the first scene live
+3. Test with the absolute path: `anima skills run controlling-lights auto-play ~/.anima/skills/controlling-lights/playlists/your-playlist.json --list` then run it once to fire the first scene live
 4. Schedule it with `anima scheduler add_task` (recipe above)
 
 ## Notes

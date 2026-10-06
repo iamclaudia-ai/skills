@@ -245,9 +245,9 @@ Write a prompt in a file named `cover.md` to be sent to Nano Banana to generate 
 
 ## Available Commands
 
-This skill is invoked through the **anima skill runner** — `anima skill run` handles CWD,
+This skill is invoked through the **anima skills runner** — `anima skills run` handles CWD,
 env injection, and (for long-running commands) automatic queueing through the scheduler.
-Inspect status anytime with `anima skill task <task-id>`.
+Inspect status anytime with `anima skills task <task-id>`.
 
 - **`generate-audio`** — generate MP3 audio from chapter markdown using the shared `eleven-tts` binary (long-running, auto-queued via scheduler)
 - **`generate-cover`** — generate cover art using Nano Banana from `cover.md` inside a novel folder
@@ -255,8 +255,8 @@ Inspect status anytime with `anima skill task <task-id>`.
 Inspect:
 
 ```bash
-anima skill list writing-romance-novels
-anima skill help writing-romance-novels generate-audio
+anima skills list writing-romance-novels
+anima skills help writing-romance-novels generate-audio
 ```
 
 For a one-off conversion (no task tracking, fully synchronous), `eleven-tts <path>` is also available directly on PATH — same script, same env vars, same behavior.
@@ -273,13 +273,13 @@ For a one-off conversion (no task tracking, fully synchronous), `eleven-tts <pat
 3. **Create outline** - Characters, setting, 3-chapter plot structure. Be sure to keep character names, occupations, and settings consistent across chapters.
 4. **Share outline** - Let user review and request changes
 5. **Write Chapter 1** - Introduction and meeting
-6. **Generate audio** - `anima skill run writing-romance-novels generate-audio <path/to/novel>/chapter-1.md`
-   - Returns a task ID immediately. Watch progress: `anima skill task <task-id> --watch`
+6. **Generate audio** - `anima skills run writing-romance-novels generate-audio <path/to/novel>/chapter-1.md`
+   - Returns a task ID immediately. Watch progress: `anima skills task <task-id> --watch`
 7. **Write Chapter 2** - Connection and development
-8. **Generate audio** - `anima skill run writing-romance-novels generate-audio <path/to/novel>/chapter-2.md`
+8. **Generate audio** - `anima skills run writing-romance-novels generate-audio <path/to/novel>/chapter-2.md`
 9. **Write Chapter 3** - Love and resolution
-10. **Generate audio** - `anima skill run writing-romance-novels generate-audio <path/to/novel>/chapter-3.md`
-11. **Generate cover** - `anima skill run writing-romance-novels generate-cover <path/to/novel>` (synchronous; pass the folder, not cover.md)
+10. **Generate audio** - `anima skills run writing-romance-novels generate-audio <path/to/novel>/chapter-3.md`
+11. **Generate cover** - `anima skills run writing-romance-novels generate-cover <path/to/novel>` (synchronous; pass the folder, not cover.md)
 12. **Generate metadata** - create the metadata.json file in the novel folder using example as guide
 13. **Provide paths** - All markdown and MP3 locations
 
@@ -294,7 +294,7 @@ For a one-off conversion (no task tracking, fully synchronous), `eleven-tts <pat
 
 ## Technical Notes
 
-- Audio generation runs through `anima skill run writing-romance-novels generate-audio`, which calls the shared `eleven-tts` binary on PATH. Long-running, auto-queued via scheduler with progress reporting (poll with `anima skill task <task-id>`).
+- Audio generation runs through `anima skills run writing-romance-novels generate-audio`, which calls the shared `eleven-tts` binary on PATH. Long-running, auto-queued via scheduler with progress reporting (poll with `anima skills task <task-id>`).
 - The shared script lives at `anima/scripts/eleven-tts.js`, symlinked to `~/.local/bin/eleven-tts`. Three skills use it (this one, guiding-meditation, creating-bedtime-stories) — single source of truth.
 - Script supports automatic chunking for long chapters
 - Each chapter should be self-contained but flow into the next

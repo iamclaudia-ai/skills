@@ -18,7 +18,7 @@ Generate high-quality images from text prompts using Gemini's Imagen model.
 
 ## Available Commands
 
-This skill is invoked through the **anima skill runner** — `anima skill run` handles
+This skill is invoked through the **anima skills runner** — `anima skills run` handles
 the working directory and env injection so there's no `cd` dance.
 
 - **`generate`** — Generate a PNG via Gemini 3 Pro Image (synchronous; typically 10–30s)
@@ -26,13 +26,13 @@ the working directory and env injection so there's no `cd` dance.
 Inspect:
 
 ```bash
-anima skill help generating-images generate
+anima skills help generating-images generate
 ```
 
 ## Usage
 
 ```bash
-anima skill run generating-images generate "<prompt>" <output-path> [options]
+anima skills run generating-images generate "<prompt>" <output-path> [options]
 ```
 
 ### Arguments
@@ -48,16 +48,16 @@ anima skill run generating-images generate "<prompt>" <output-path> [options]
 
 ```bash
 # Square image (default)
-anima skill run generating-images generate "A serene mountain lake at sunset" ~/images/lake.png
+anima skills run generating-images generate "A serene mountain lake at sunset" ~/images/lake.png
 
 # Widescreen landscape
-anima skill run generating-images generate "Futuristic cityscape at night" ~/images/city.png --aspect-ratio 16:9 --size 4K
+anima skills run generating-images generate "Futuristic cityscape at night" ~/images/city.png --aspect-ratio 16:9 --size 4K
 
 # Portrait orientation
-anima skill run generating-images generate "Portrait of a wise elder" ~/images/portrait.png --aspect-ratio 2:3
+anima skills run generating-images generate "Portrait of a wise elder" ~/images/portrait.png --aspect-ratio 2:3
 
 # Phone wallpaper
-anima skill run generating-images generate "Abstract geometric patterns" ~/images/wallpaper.png --aspect-ratio 9:16 --size 4K
+anima skills run generating-images generate "Abstract geometric patterns" ~/images/wallpaper.png --aspect-ratio 9:16 --size 4K
 ```
 
 ## How It Works

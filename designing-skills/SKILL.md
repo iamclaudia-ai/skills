@@ -28,11 +28,11 @@ skills/
 script, sets cwd, and injects env vars. Scripts no longer need a `cd` dance:
 
 ```bash
-anima skill run <skill-id> <command> [args...]      # synchronous
-anima skill run <skill-id> <command> [...] --task   # queue via scheduler
-anima skill task <task-id> --watch                  # poll a queued task
-anima skill list                                    # discovery
-anima skill help <skill-id> <command>               # per-command help
+anima skills run <skill-id> <command> [args...]      # synchronous
+anima skills run <skill-id> <command> [...] --task   # queue via scheduler
+anima skills task <task-id> --watch                  # poll a queued task
+anima skills list                                    # discovery
+anima skills help <skill-id> <command>               # per-command help
 ```
 
 The runner injects these env vars before exec:
@@ -49,7 +49,7 @@ The runner injects these env vars before exec:
 ## skill.json — Optional Metadata
 
 When absent, any executable file under `scripts/` is callable by basename
-(e.g., `scripts/foo.js` → `anima skill run myskill foo`). Runtime is
+(e.g., `scripts/foo.js` → `anima skills run myskill foo`). Runtime is
 auto-detected by extension or shebang.
 
 For richer behavior — argv help, longRunning auto-queue, required env
@@ -171,7 +171,7 @@ After the frontmatter, include:
 - **When to Use** section with bullet points
 - **Available Commands** — list the commands the skill exposes through the runner
 - **Instructions** for how to accomplish the task
-- **Examples** showing `anima skill run …` invocations
+- **Examples** showing `anima skills run …` invocations
 - **Notes** for edge cases or important details
 
 ## Writing Scripts that Work with the Runner
@@ -225,26 +225,26 @@ Use this skill when the user wants to [goal].
 
 ## Available Commands
 
-This skill is invoked through the **anima skill runner**.
+This skill is invoked through the **anima skills runner**.
 
 - **`<command-name>`** — description of what the command does
 
 Inspect:
 
 \`\`\`bash
-anima skill help doing-something <command-name>
+anima skills help doing-something <command-name>
 \`\`\`
 
 ## Instructions
 
 1. [Step 1]
 2. [Step 2]
-3. [Step 3] — `anima skill run doing-something <command> <absolute-path-arg>`
+3. [Step 3] — `anima skills run doing-something <command> <absolute-path-arg>`
 
 ## Examples
 
 \`\`\`bash
-anima skill run doing-something <command> /absolute/path/to/input
+anima skills run doing-something <command> /absolute/path/to/input
 \`\`\`
 
 ## Notes
@@ -258,7 +258,7 @@ anima skill run doing-something <command> /absolute/path/to/input
 ```json
 {
   "id": "doing-something",
-  "description": "Short description shown in `anima skill list`.",
+  "description": "Short description shown in `anima skills list`.",
   "commands": {
     "<command-name>": {
       // Choose ONE: `script` for skill-local logic, `command` for a PATH binary

@@ -27,7 +27,7 @@ DNS for both zones is **Cloudflare**.
 
 ## Available Commands
 
-Invoked through the anima skill runner (`anima skill run renewing-ssl-certificates <cmd> …`),
+Invoked through the anima skills runner (`anima skills run renewing-ssl-certificates <cmd> …`),
 or directly as `scripts/<cmd>.sh`. Use one workdir per round, e.g. `~/certs/renewal-2027-04`.
 
 - **`make-csr <workdir> <domain>`**: new RSA-2048 key (reused if one is already in the workdir) + CN-only CSR, copied to the clipboard. Prints the DCV hashes to expect.

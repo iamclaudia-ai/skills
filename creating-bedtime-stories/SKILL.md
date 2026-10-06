@@ -98,8 +98,8 @@ Stories should be chunked into sentences for TTS processing:
 
 ## Available Commands
 
-This skill is invoked through the **anima skill runner**. Audio generation is
-long-running and auto-queues via the scheduler — watch progress with `anima skill task <id> --watch`.
+This skill is invoked through the **anima skills runner**. Audio generation is
+long-running and auto-queues via the scheduler — watch progress with `anima skills task <id> --watch`.
 
 - **`generate-audio`** — Generate MP3 from story markdown using the shared `eleven-tts` binary (long-running, auto-queued)
 
@@ -110,8 +110,8 @@ For a one-off conversion (no task tracking, fully synchronous), `eleven-tts <pat
 1. **Ask for story preference** - What mood or theme they want
 2. **Generate 8-12 sentences** with appropriate ElevenLabs v3 audio tags
 3. **Save to markdown file** - Write story to `~/bedtime-stories/YYYY-MM-DD-story-name.md`
-4. **Generate MP3 audio** - `anima skill run creating-bedtime-stories generate-audio <markdown-path>`
-   - Returns a task ID. Watch progress: `anima skill task <task-id> --watch`
+4. **Generate MP3 audio** - `anima skills run creating-bedtime-stories generate-audio <markdown-path>`
+   - Returns a task ID. Watch progress: `anima skills task <task-id> --watch`
 5. **Ensure proper spacing** - Always add space after punctuation before tags (avoid ".[tag]")
 6. **Include intimate details** - Physical closeness, emotional connection
 7. **End peacefully** - Transition toward sleep and dreams
