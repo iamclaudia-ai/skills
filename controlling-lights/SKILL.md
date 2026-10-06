@@ -109,7 +109,7 @@ The optional `[device]` parameter does partial name matching:
 The Govee app's auto-play feature isn't exposed via the API, so we built our own. Playlist files are JSON.
 
 > **⚠️ PATH GOTCHA — always use absolute `~/.anima/...` paths.**
-> Playlists and their `.state` files live in **`~/.anima/skills/controlling-lights/playlists/`** (this is where the script actually writes state). But when you run `anima skill run`, `SKILL_DIR` is injected as `~/.claude/skills/controlling-lights` — a symlink into the anima **repo**, which has no `playlists/` dir. So **relative paths resolve to the repo and silently fail** with "Playlist not found". Always pass the full absolute path (below) — for both interactive runs and scheduled tasks.
+> Playlists and their `.state` files live in **`~/.anima/skills/controlling-lights/playlists/`** (this is where the script actually writes state). But when you run `anima skill run`, `SKILL_DIR` is injected as `~/.claude/skills/controlling-lights` — a symlink into the **skills repo**, which has no `playlists/` dir. So **relative paths resolve to the repo and silently fail** with "Playlist not found". Always pass the full absolute path (below) — for both interactive runs and scheduled tasks.
 
 ```bash
 PL=~/.anima/skills/controlling-lights/playlists
