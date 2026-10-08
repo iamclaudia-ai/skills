@@ -25,10 +25,20 @@
       "script": "scripts/carve-and-apply.sh",
       "runtime": "bash",
       "longRunning": false,
-      "description": "Carve the canvas into per-display timestamped crops and set each as wallpaper. Pass name=WxH+X+Y to override a physically-separated screen (e.g. a prompter); --no-set to carve only; --resize to cover-crop a mis-sized canvas.",
+      "description": "Carve the canvas into per-display timestamped crops and set each as wallpaper. Pass name=WxH+X+Y to override a physically-separated screen (e.g. a prompter); --no-set to carve only; --resize to cover-crop a mis-sized canvas. Records a wallpaper-set.conf so the set can be replayed with apply-set.",
       "args": [
         { "name": "canvas", "type": "absolute-file", "required": true, "description": "Prepared canvas, sized to the arrangement bbox" },
         { "name": "out-dir", "type": "absolute-folder", "required": false, "description": "Where crops are written (default: canvas's folder)" }
+      ],
+      "timeoutMs": 120000
+    },
+    "apply-set": {
+      "script": "scripts/apply-set.sh",
+      "runtime": "bash",
+      "longRunning": false,
+      "description": "Apply a saved wallpaper set by folder name (a subfolder of ~/Pictures/wallpaper) or path. Reads the set's recorded canvas + overrides from wallpaper-set.conf. Use this to swap wallpapers or recover after a reboot.",
+      "args": [
+        { "name": "set", "type": "string", "required": true, "description": "Set folder name (e.g. goldengate) or a path to the set folder" }
       ],
       "timeoutMs": 120000
     }

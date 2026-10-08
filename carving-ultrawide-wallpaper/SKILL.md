@@ -59,6 +59,24 @@ crop_w, crop_h= screen.width, screen.height
    Add an override for any physically-separated screen (see below). `--no-set`
    carves only; `--resize` cover-crops a mis-sized canvas (re-crops framing — avoid).
 
+## Wallpaper sets (swap by folder name)
+
+Keep each wallpaper as its own folder under `~/Pictures/wallpaper/<set>/` (a
+prepared canvas `.jpg`, its `.psd`, and the carved outputs). Every `apply` run
+writes a `wallpaper-set.conf` into the folder recording the **canvas filename +
+overrides**, so a set becomes replayable:
+
+```
+anima skills run carving-ultrawide-wallpaper apply-set goldengate      # swap to a set
+anima skills run carving-ultrawide-wallpaper apply-set sanfran         # swap back
+```
+
+`apply-set` takes a folder name (resolved under `$WALLPAPER_DIR`, default
+`~/Pictures/wallpaper`) or a full path. It's the fastest way to rotate between
+built sets, and to recover after a reboot (new filenames beat the wallpaper cache
+automatically). A folder with no `wallpaper-set.conf` yet falls back to the lone
+source canvas with no overrides — run `apply` once with the override to record it.
+
 ## Physically-separated screens (the prompter case)
 
 A screen whose macOS arrangement says "attached to the top of center" but is really
@@ -109,4 +127,5 @@ The two LGs are 2560×2880 (LG DUAL UP); the center is 2560×1440 — deliberate
 - `scripts/displays.swift` — `list` (geometry + seamless crop + bbox) / `set <id> <file> …`
 - `scripts/list-displays.sh` — pretty display table + bbox
 - `scripts/seam-check.sh` — reconstruct the desk to verify continuity (preview PNG)
-- `scripts/carve-and-apply.sh` — carve (timestamped) + set, with per-screen overrides
+- `scripts/carve-and-apply.sh` — carve (timestamped) + set, with per-screen overrides; records `wallpaper-set.conf`
+- `scripts/apply-set.sh` — apply a saved set by folder name (reads `wallpaper-set.conf`)
