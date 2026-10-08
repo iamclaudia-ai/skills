@@ -1,0 +1,36 @@
+{
+  "id": "carving-ultrawide-wallpaper",
+  "description": "Slice one prepared wallpaper canvas into seamless per-display crops at each monitor's true physical position, then set each display's wallpaper by id.",
+  "commands": {
+    "displays": {
+      "script": "scripts/list-displays.sh",
+      "runtime": "bash",
+      "longRunning": false,
+      "description": "List every display (id, name, origin, size) and its seamless crop window, plus the arrangement bounding box (= the size your canvas must be).",
+      "args": [],
+      "timeoutMs": 30000
+    },
+    "seam-check": {
+      "script": "scripts/seam-check.sh",
+      "runtime": "bash",
+      "longRunning": false,
+      "description": "Reconstruct the physical desk from the canvas (crops composited at their positions, edges outlined) to verify seamlessness before applying. Writes a preview PNG.",
+      "args": [
+        { "name": "canvas", "type": "absolute-file", "required": true, "description": "Prepared canvas, sized to the arrangement bbox" },
+        { "name": "out-png", "type": "string", "required": false, "description": "Preview output path (default: temp)" }
+      ],
+      "timeoutMs": 60000
+    },
+    "apply": {
+      "script": "scripts/carve-and-apply.sh",
+      "runtime": "bash",
+      "longRunning": false,
+      "description": "Carve the canvas into per-display timestamped crops and set each as wallpaper. Pass name=WxH+X+Y to override a physically-separated screen (e.g. a prompter); --no-set to carve only; --resize to cover-crop a mis-sized canvas.",
+      "args": [
+        { "name": "canvas", "type": "absolute-file", "required": true, "description": "Prepared canvas, sized to the arrangement bbox" },
+        { "name": "out-dir", "type": "absolute-folder", "required": false, "description": "Where crops are written (default: canvas's folder)" }
+      ],
+      "timeoutMs": 120000
+    }
+  }
+}
