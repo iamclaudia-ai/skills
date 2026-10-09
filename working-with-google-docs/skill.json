@@ -1,0 +1,77 @@
+{
+  "id": "working-with-google-docs",
+  "description": "Read, review, comment on and update Google Docs through Michael's signed-in Chrome (DOMINATRIX): text export, comment snapshots and diffs, replies, appending content.",
+  "commands": {
+    "read-doc": {
+      "script": "scripts/read-doc.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Save the doc's text as Markdown (from the /mobilebasic view) and list its headings.",
+      "args": [
+        { "name": "doc", "type": "string", "required": true, "description": "Doc URL or id" },
+        { "name": "out", "type": "string", "required": true, "description": "Absolute path for the .md file" },
+        { "name": "profile", "type": "string", "required": false, "description": "Chrome profile (default michael.carter@beehiiv.com)" }
+      ],
+      "timeoutMs": 60000
+    },
+    "snapshot-comments": {
+      "script": "scripts/snapshot-comments.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Save every open comment thread (author, time, text of each message) as JSON.",
+      "args": [
+        { "name": "doc", "type": "string", "required": true, "description": "Doc URL or id" },
+        { "name": "out", "type": "string", "required": true, "description": "Absolute .json path, or a folder for a timestamped file" },
+        { "name": "profile", "type": "string", "required": false }
+      ],
+      "timeoutMs": 60000
+    },
+    "diff-comments": {
+      "script": "scripts/diff-comments.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Show new threads, new replies and resolved threads between two snapshots.",
+      "args": [
+        { "name": "old", "type": "absolute-file", "required": true },
+        { "name": "new", "type": "absolute-file", "required": true }
+      ],
+      "timeoutMs": 10000
+    },
+    "post-replies": {
+      "script": "scripts/post-replies.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Reply to existing comment threads from a JSON list of [thread_prefix, text]; verifies each post, skips ones already posted.",
+      "args": [
+        { "name": "doc", "type": "string", "required": true },
+        { "name": "replies", "type": "absolute-file", "required": true },
+        { "name": "profile", "type": "string", "required": false }
+      ],
+      "timeoutMs": 600000
+    },
+    "append-html": {
+      "script": "scripts/append-html.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Paste HTML at the end of the doc as one undoable edit; leaves the tab open for verify or undo.",
+      "args": [
+        { "name": "doc", "type": "string", "required": true },
+        { "name": "html", "type": "absolute-file", "required": true },
+        { "name": "screenshot", "type": "string", "required": true, "description": "Absolute .png path" },
+        { "name": "profile", "type": "string", "required": false }
+      ],
+      "timeoutMs": 60000
+    },
+    "undo": {
+      "script": "scripts/undo.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Send Cmd+Z in the tab that made the edit (undo history is per tab).",
+      "args": [
+        { "name": "tab-id", "type": "string", "required": true },
+        { "name": "screenshot", "type": "string", "required": true }
+      ],
+      "timeoutMs": 30000
+    }
+  }
+}
