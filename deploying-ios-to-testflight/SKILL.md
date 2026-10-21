@@ -36,9 +36,11 @@ The script prints a log directory; check the per-scheme logs there on failure.
      targets being shipped. Do **not** use `agvtool`, because it changes every target.
    - Edit by exact value (e.g. `CURRENT_PROJECT_VERSION = 10709;` → `10710;`) and confirm the
      line count afterwards.
+   - Check `git diff` first. Michael often deploys from Xcode without committing, so an
+     uncommitted bump has probably already been uploaded. Bump past it, not to it.
 2. **Compile check** (optional but cheap): `xcodebuild -workspace ... -scheme X -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO`
 3. **Deploy** with the `deploy` command above.
-4. **Commit** using conventional commits and push only if Michael asks.
+4. **Commit** using conventional commits and push when done.
 5. Tell Michael the builds are processing; they show up in TestFlight in about 10-20 minutes.
 
 ## The "Copy failed" Gotcha (Homebrew rsync)
@@ -83,4 +85,19 @@ the shell PATH.
 
 ```bash
 anima skills run deploying-ios-to-testflight deploy ~/Projects/fuse/fuse3ios/Fuse3.xcworkspace Fuse3 Fuse3b --sync
+```
+
+### Fuse IGT (`~/Projects/fuse/fuse-igt-ios`)
+
+- Workspace: **`4.xcworkspace`** (project `4.xcodeproj`). Ignore `FuseIGT.xcworkspace`, which
+  is stale and references a path on a former developer's machine. Remote: `onezerone/fuse-igt-ios`, branch `master`.
+- **FuseIGT** (`ai.apptimum.fuse.igt`, `FuseIGT/Info.plist`) and **SignalMountain**
+  (`ai.apptimum.fuse.signalmountain`, `SignalMountain.plist`): ship both, with the same version.
+  Their plists differ on purpose (display name, orientations).
+- Version scheme: `1.15.N` ↔ build `115NN` (1.15.11 → 11511).
+- Toasts force-unwrap `(UIApplication.shared.delegate as! AppDelegate).window!`, so the
+  SceneDelegate must hand its window back to AppDelegate.
+
+```bash
+anima skills run deploying-ios-to-testflight deploy ~/Projects/fuse/fuse-igt-ios/4.xcworkspace FuseIGT SignalMountain
 ```
