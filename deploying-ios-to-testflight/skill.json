@@ -1,0 +1,17 @@
+{
+  "id": "deploying-ios-to-testflight",
+  "description": "Archive iOS schemes and upload them to App Store Connect / TestFlight with xcodebuild.",
+  "commands": {
+    "deploy": {
+      "script": "scripts/deploy.sh",
+      "runtime": "bash",
+      "longRunning": true,
+      "description": "Archive each scheme (Release, generic iOS) into Xcode's Archives folder, then export and upload it to App Store Connect. Runs with a system-only PATH so Homebrew rsync can't break the export.",
+      "args": [
+        { "name": "container", "type": "string", "required": true, "description": "Absolute path to the .xcworkspace (CocoaPods projects) or .xcodeproj" },
+        { "name": "schemes", "type": "string", "required": true, "description": "One or more scheme names, space separated" }
+      ],
+      "timeoutMs": 3600000
+    }
+  }
+}
