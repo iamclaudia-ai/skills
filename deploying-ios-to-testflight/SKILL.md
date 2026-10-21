@@ -28,6 +28,11 @@ without `--sync` it queues as a task (`anima skills task <id> --watch`). Archive
 go to `~/Library/Developer/Xcode/Archives/<date>/`, so they appear in Xcode's Organizer.
 The script prints a log directory; check the per-scheme logs there on failure.
 
+When App Store Connect is slow, an upload can loop on "asset-description… is not yet
+complete; will check status in 5 seconds" for 10+ minutes. A two-scheme deploy then runs past
+the 10-minute Bash timeout. That's Apple, not a hang: re-run `anima skills task <id> --watch`
+and check the `*-upload.log` files in the log directory.
+
 ## Instructions
 
 1. **Bump the version.** Every upload needs a build number App Store Connect has never seen.
@@ -97,6 +102,9 @@ anima skills run deploying-ios-to-testflight deploy ~/Projects/fuse/fuse3ios/Fus
 - Version scheme: `1.15.N` ↔ build `115NN` (1.15.11 → 11511).
 - Toasts force-unwrap `(UIApplication.shared.delegate as! AppDelegate).window!`, so the
   SceneDelegate must hand its window back to AppDelegate.
+- Templates download from `<currentURL>/Content/Templates/<Client>/<file>`. The `Client` comes
+  from the Info.plist (`GTECH`). SignalMountain always uses `https://signalmountain.fuse.do`.
+  If you see "Unable to find file X.json", check the ETag/Caches handling first (fixed in `d91b858`).
 
 ```bash
 anima skills run deploying-ios-to-testflight deploy ~/Projects/fuse/fuse-igt-ios/4.xcworkspace FuseIGT SignalMountain
