@@ -116,7 +116,7 @@ fi
 
 # 4. Submit review using gh comment (see below)
 
-# 5. CLEAN UP — only after the review is live AND verified (see step 8 in Review Process)
+# 5. CLEAN UP — only after the review is live AND verified (see step 10 in Review Process)
 #    Plain `worktree remove` is enough: the seed uses one-shot CLI commands
 #    (sync/explore/query), so nothing persistent is watching the worktree —
 #    deleting it just drops its private .codegraph too. No daemon to stop.
@@ -171,15 +171,44 @@ gh api repos/owner/repo/pulls/<PR>/comments --jq '.[] | {user: .user.login, path
 ### Review Process
 
 1. **Check existing review state** — See above. Don't duplicate work already done.
-2. **Get PR metadata** — `gh pr view <PR> --json title,body,files` for context
+2. **Get PR metadata** — `gh pr view <PR> --json title,body,files,headRefOid` for context. **Write down `headRefOid`**: it is the SHA your line numbers are true for (step 8 checks it again).
 3. **Read the diff** — `gh pr diff <PR>`. For a scoped diff inside the worktree use **three dots** (`git diff origin/main...HEAD -- <path>`); two dots invents deletions — see [Never diff a PR with two dots](#-never-diff-a-pr-with-two-dots).
 4. **Read the Linear ticket** — `linctl issue get <KEY>` if the PR mentions one. The ticket often lists the **expected files** for a feature; cross-check that they're all in the diff. Missing files = the PR description is making promises the diff doesn't keep.
 5. **Explore in worktree** — Read the full files, not just changed lines. Check callers, tests, related code.
 6. **Verify claims by mutating — in the worktree, never the shared checkout** — see below.
 7. **Present findings** — Show review findings to Michael for discussion before submitting
-8. **Submit review** — For APPROVE/REQUEST_CHANGES use the **split process**: `gh comment review --event COMMENT` for inline comments, then native `gh pr review --approve` for the decision (see [Submitting Reviews](#submitting-reviews-recommended-pattern)). COMMENT-only reviews can stay in one `gh comment` call.
-9. **VERIFY both landed** — Query the API to confirm (a) inline comments attached AND (b) the review decision registered. **0 comments = silent failure; missing APPROVED = the decision didn't take** (see [Verifying a Submission](#verifying-a-submission)).
-10. **Clean up worktree** — Only after the review is live AND verified. Don't tear down on "I think we're done."
+8. **Re-check the head right before posting** — the author may have pushed while you reviewed. See [The PR can move while you review](#-the-pr-can-move-while-you-review).
+9. **Submit review** — For APPROVE/REQUEST_CHANGES use the **split process**: `gh comment review --event COMMENT` for inline comments, then native `gh pr review --approve` for the decision (see [Submitting Reviews](#submitting-reviews-recommended-pattern)). COMMENT-only reviews can stay in one `gh comment` call.
+10. **VERIFY both landed** — Query the API to confirm (a) inline comments attached AND (b) the review decision registered. **0 comments = silent failure; missing APPROVED = the decision didn't take** (see [Verifying a Submission](#verifying-a-submission)).
+11. **Clean up worktree** — Only after the review is live AND verified. Don't tear down on "I think we're done."
+
+### ⚠️ The PR can move while you review
+
+A careful review takes a while, and authors keep pushing. `gh comment` posts against the PR's
+**current** head, but your `file:line` numbers came from the SHA you read. If a commit landed in
+between and shifted lines in a file you comment on, the comment lands on the wrong line, with no
+error.
+
+**Why this is a step and not a tip:** on #32392 (2026-10-22) the author pushed two commits during
+the review. Six lines were added to the top of the README, so a "link these docs" note landed on an
+unrelated line. Fixing it meant a duplicate comment and a delete that dcg (rightly) gates on
+Michael. The other six comments survived only because their files hadn't moved.
+
+Right before posting:
+
+```bash
+gh pr view <PR> --json headRefOid --jq .headRefOid   # compare with the SHA from step 2
+# If it changed:
+git fetch origin <branch>
+git log --oneline <reviewed-sha>..FETCH_HEAD
+git diff <reviewed-sha> FETCH_HEAD                   # what moved, and does any finding no longer apply?
+```
+
+- **Re-map every line number** in a file the new commits touched (`git show FETCH_HEAD:<path> | grep -n`).
+- **Re-check every finding** against the new commits: the author may have fixed one, or added something worth a note.
+- **Read `gh comment`'s echo.** It prints the code on each target line. If that isn't the line you
+  meant, the line number is wrong, not the tool. Fix it before you post the decision.
+- If the change is big, tell Michael before you post; the verdict may need another look.
 
 ### ⚠️ Mutation-test inside the worktree, never the shared checkout
 
