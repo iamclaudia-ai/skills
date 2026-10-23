@@ -33,6 +33,17 @@ complete; will check status in 5 seconds" for 10+ minutes. A two-scheme deploy t
 the 10-minute Bash timeout. That's Apple, not a hang: re-run `anima skills task <id> --watch`
 and check the `*-upload.log` files in the log directory.
 
+If one scheme's upload fails with `exportArchive The request timed out` ("Fetching apps for
+account… timed out"), that's a transient App Store Connect error, and the archive is fine. Don't
+re-run the whole deploy. Re-upload only that archive, reusing the `<Scheme>-ExportOptions.plist`
+from the log directory:
+
+```bash
+PATH=/usr/bin:/bin:/usr/sbin:/sbin xcodebuild -exportArchive -allowProvisioningUpdates \
+  -archivePath "~/Library/Developer/Xcode/Archives/<date>/<Scheme> <timestamp>.xcarchive" \
+  -exportOptionsPlist <logdir>/<Scheme>-ExportOptions.plist -exportPath <scratch dir>
+```
+
 ## Instructions
 
 1. **Bump the version.** Every upload needs a build number App Store Connect has never seen.
