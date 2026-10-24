@@ -32,7 +32,14 @@ anima skills run updating-dependencies sweep --only iamclaudia-ai/ripply
 Config: `~/.anima/deps-sweep.json` (created with defaults on first run):
 `roots`, `exclude` (beehiiv is excluded: work repos belong to the security
 team), `owners`, `activeWithinDays`, `include`/`skip` (absolute paths),
-`windowDays`, `maxConcurrentSessions`, `maxBreakingPrsPerRun`.
+`windowDays`, `maxConcurrentSessions`, `maxBreakingPrsPerRun`, `homebrew`.
+
+**Homebrew** (`homebrew: true`, skipped with `--only`): the sweep also runs
+`auditing-dependencies brew` on this machine, writes `homebrew.md`/`.json`,
+adds a Homebrew section to `SUMMARY.md`, and when something is actionable
+starts a read-only "Deps sweep · homebrew" session that writes Michael an
+upgrade plan. It never upgrades brew itself: that is machine-wide, and
+code-server (his only remote terminal) runs on brew node@22.
 
 A repo is swept when its GitHub origin belongs to one of `owners`, it is not
 a fork or archived, and it had a commit within `activeWithinDays`. PRs need

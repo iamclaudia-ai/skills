@@ -26,6 +26,7 @@ interface Config {
   windowDays: number;
   maxConcurrentSessions: number;
   maxBreakingPrsPerRun: number;
+  homebrew: boolean;
 }
 
 const CONFIG_PATH = join(homedir(), ".anima", "deps-sweep.json");
@@ -39,6 +40,7 @@ const DEFAULT_CONFIG: Config = {
   windowDays: 3,
   maxConcurrentSessions: 2,
   maxBreakingPrsPerRun: 3,
+  homebrew: true,
 };
 
 const expand = (p: string) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : p);
@@ -405,9 +407,30 @@ function sessionPrompt(r: RepoReport, mdPath: string, jsonPath: string, date: st
   ].join("\n");
 }
 
+function homebrewPrompt(mdPath: string, jsonPath: string, date: string): string {
+  return [
+    "Load the auditing-dependencies skill and follow its Homebrew section.",
+    "",
+    `This week's Homebrew scan of this machine (${date}) is at ${mdPath} (raw data: ${jsonPath}).`,
+    "",
+    "You are running unattended; Michael is not watching. Do NOT change anything: no brew upgrade,",
+    "install, uninstall, trust, or service restart. Homebrew changes are machine-wide, and code-server",
+    "(Michael's only remote terminal) runs on brew node@22. Read-only checks are fine, including",
+    "`brew upgrade --dry-run <formulae>` to see which dependents each upgrade would pull in.",
+    "",
+    "Your final message is the plan Michael reads with his coffee: what to fix first (running or",
+    "exposed formulae, runtime security releases), the exact commands in the order to run them, what",
+    "each pulls in, anything that needs sudo, and casks worth uninstalling instead of upgrading.",
+  ].join("\n");
+}
+
 function startSession(r: RepoReport, prompt: string, date: string): string | null {
-  const res = run([ANIMA, "session", "spawn_agent", "--parentSessionId", "NEW", "--cwd", r.path,
-    "--name", `Deps sweep · ${basename(r.slug)} · ${date}`, "--prompt", prompt], undefined, 60_000);
+  return spawnNamed(r.path, `Deps sweep · ${basename(r.slug)} · ${date}`, prompt);
+}
+
+function spawnNamed(cwd: string, name: string, prompt: string): string | null {
+  const res = run([ANIMA, "session", "spawn_agent", "--parentSessionId", "NEW", "--cwd", cwd,
+    "--name", name, "--prompt", prompt], undefined, 60_000);
   if (!res.ok) {
     console.error(`  failed to start session: ${res.out.split("\n")[0]}`);
     return null;
@@ -455,17 +478,36 @@ for (const repo of selected) {
   }
 }
 
+// Homebrew scan of this machine (skipped with --only, which targets repos).
+interface BrewScan { actionable: boolean; formulae: Array<{ latest: string | null }>; outdatedFormulae: number; casks: unknown[] }
+let brewScan: BrewScan | null = null;
+if (cfg.homebrew && !only && Bun.which("brew")) {
+  const res = run([ANIMA, "skills", "run", "auditing-dependencies", "brew", "--out", outDir], undefined, 900_000);
+  const jsonPath = join(outDir, "homebrew.json");
+  if (res.ok && existsSync(jsonPath)) {
+    brewScan = JSON.parse(readFileSync(jsonPath, "utf8")) as BrewScan;
+    console.log(`- homebrew: ${brewScan.formulae.length} vulnerable formulae, ${brewScan.outdatedFormulae} outdated${brewScan.actionable ? " -> actionable" : ""}`);
+  } else {
+    console.error(`- homebrew: scan failed: ${res.out.split("\n")[0]}`);
+  }
+}
+
 const summary = [`# Dependency sweep ${date}`, "", "| Repo | Advisories | Safe | Breaking | Cooling | Access | Session |", "| --- | --- | --- | --- | --- | --- | --- |"];
 const queue = reports.filter((r) => r.actionable && r.canOpenPrs);
 const sessions = new Map<string, string>();
+let brewSession: string | null = null;
+
+async function waitForSlot(running: string[]): Promise<void> {
+  while (running.length >= cfg.maxConcurrentSessions) {
+    await Bun.sleep(60_000);
+    for (let i = running.length - 1; i >= 0; i--) if (!turnActive(running[i])) running.splice(i, 1);
+  }
+}
 
 if (!dryRun) {
   const running: string[] = [];
   for (const r of queue) {
-    while (running.length >= cfg.maxConcurrentSessions) {
-      await Bun.sleep(60_000);
-      for (let i = running.length - 1; i >= 0; i--) if (!turnActive(running[i])) running.splice(i, 1);
-    }
+    await waitForSlot(running);
     const file = r.slug.replace("/", "--");
     const sessionId = startSession(r, sessionPrompt(r, join(outDir, `${file}.md`), join(outDir, `${file}.json`), date), date);
     if (sessionId) {
@@ -476,11 +518,23 @@ if (!dryRun) {
       await Bun.sleep(15_000);
     }
   }
+  if (brewScan?.actionable) {
+    await waitForSlot(running);
+    brewSession = spawnNamed(homedir(), `Deps sweep · homebrew · ${date}`,
+      homebrewPrompt(join(outDir, "homebrew.md"), join(outDir, "homebrew.json"), date));
+    if (brewSession) console.log(`  started session ${brewSession} for homebrew`);
+  }
 }
 
 for (const r of reports) {
   const breaking = r.breaking.filter((b) => b.status === "new").length;
   summary.push(`| ${r.slug} | ${r.advisories.length} | ${r.safe.length} | ${breaking} | ${r.cooling.length} | ${r.access} | ${sessions.get(r.slug) ?? (r.actionable ? (r.canOpenPrs ? (dryRun ? "dry run" : "failed") : "report only") : "nothing to do")} |`);
+}
+if (brewScan) {
+  const fixable = brewScan.formulae.filter((f) => f.latest).length;
+  summary.push("", "## Homebrew", "",
+    `${brewScan.formulae.length} vulnerable formulae (${fixable} fixable by upgrading), ${brewScan.outdatedFormulae} outdated formulae, ${brewScan.casks.length} casks behind. ` +
+      `Report: homebrew.md. Session: ${brewSession ?? (brewScan.actionable ? (dryRun ? "dry run" : "failed") : "nothing urgent")}.`);
 }
 if (skipped.length > 0) summary.push("", "## Skipped", "", ...skipped.map((s) => `- ${s}`));
 writeFileSync(join(outDir, "SUMMARY.md"), `${summary.join("\n")}\n`);

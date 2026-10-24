@@ -31,6 +31,21 @@
         }
       ],
       "timeoutMs": 60000
+    },
+    "brew": {
+      "script": "scripts/brew.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Homebrew security scan of this machine: brew vulns (OSV) joined with brew outdated, exposure (running services and processes), Node keg security releases, coverage gaps, and casks behind on disk. Read-only.",
+      "args": [
+        {
+          "name": "flags",
+          "type": "string",
+          "required": false,
+          "description": "[--out <dir>] [--no-update]"
+        }
+      ],
+      "timeoutMs": 900000
     }
   }
 }

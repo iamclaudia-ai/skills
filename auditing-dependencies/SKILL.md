@@ -1,6 +1,6 @@
 ---
 name: auditing-dependencies
-description: "MUST be used when checking a project for security updates, vulnerable dependencies, or supply-chain risk, and when upgrading dependencies in response to an advisory or a security incident. Audits any project (Bun, pnpm, npm, yarn, Ruby, Python, Rust, Swift), applies fixes in order of risk, untangles vulnerabilities stuck behind a parent's pinned range (parent upgrade or override, with a reachability check), sets up a release-age cooling-off window and exempts security fixes from it, flags floating `latest` specifiers and `npx pkg@latest` runs, and checks whether Bun/Node runtimes are missing security releases. Triggers on: security updates, check for vulnerabilities, bun audit, npm audit, pnpm audit, dependency audit, CVE, GHSA, security advisory, vulnerable package, upgrade dependencies, update deps, patch vulnerabilities, supply chain attack, compromised package, hijacked release, minimumReleaseAge, release age, waiting period, cooldown, overrides, resolutions, transitive vulnerability, outdated packages, harden dependencies, rotate after breach, node security release, bun upgrade."
+description: "MUST be used when checking a project or this machine's Homebrew installs for security updates, vulnerable dependencies, or supply-chain risk, and when upgrading dependencies in response to an advisory or a security incident. Audits any project (Bun, pnpm, npm, yarn, Ruby, Python, Rust, Swift), applies fixes in order of risk, untangles vulnerabilities stuck behind a parent's pinned range (parent upgrade or override, with a reachability check), sets up a release-age cooling-off window and exempts security fixes from it, flags floating `latest` specifiers and `npx pkg@latest` runs, and checks whether Bun/Node runtimes are missing security releases. Triggers on: security updates, check for vulnerabilities, bun audit, npm audit, pnpm audit, dependency audit, CVE, GHSA, security advisory, vulnerable package, upgrade dependencies, update deps, patch vulnerabilities, supply chain attack, compromised package, hijacked release, minimumReleaseAge, release age, waiting period, cooldown, overrides, resolutions, transitive vulnerability, outdated packages, harden dependencies, rotate after breach, node security release, bun upgrade, homebrew, brew vulns, brew outdated, brew upgrade, outdated casks, brew trust."
 ---
 
 # Auditing Dependencies
@@ -27,6 +27,8 @@ Invoked through the **anima skills runner**:
   specifiers and `npx|bunx ...@latest` runs in package.json scripts and
   `.husky` hooks, credentials embedded in git remote URLs (masked), and
   Bun/Node versions vs latest (Node's index marks security releases).
+- **`brew [--out <dir>] [--no-update]`**: Homebrew security scan of this machine
+  (see the Homebrew section). Read-only.
 - **`release-age [--window-days N] [--deps a,b] <name@version|name@latest>...`**:
   publish age of npm versions, whether each is blocked by an N-day window
   (default 3), the latest version, and the ranges it declares for the
@@ -143,6 +145,58 @@ leave that one to Michael.
   message listing the critical/high items, and push.
 - **Restart long-running services** so they actually load the new code
   (`anima watchdog reload` for Anima), then check their health.
+
+## Homebrew (machine-wide)
+
+`anima skills run auditing-dependencies brew [--out <dir>] [--no-update]` scans
+this machine read-only. It joins `brew vulns` (built into Homebrew 7, OSV.dev)
+with `brew outdated`, flags exposure (running brew services, plus any process
+launched from a keg, which is how code-server's node@22 shows up), checks Node
+kegs against Node security releases, lists what OSV can't cover, and compares
+outdated casks with the version actually on disk. The weekly sweep runs it
+and starts a read-only planning session when something is actionable.
+
+**Coverage gaps.** `brew vulns` skips casks, formulae from untrusted taps, and
+formulae without a git source it understands (node, python, sqlite, gnupg,
+openssl, code-server...). For those, "outdated" is the signal. Trust a
+third-party formula you use with `brew trust --formula <tap>/<formula>`
+(narrower than trusting the whole tap). Untrusted formulae are not upgraded
+either.
+
+**Severity is not exposure.** Fix first what is running (Caddy is the front
+door for the `*.kiliman.dev` sites) and runtime security releases. A critical
+in brew's curl matters less when PATH uses `/usr/bin/curl`, and image libraries
+matter only when they parse untrusted files.
+
+**Upgrading safely:**
+
+1. `brew upgrade --dry-run <formulae>` first. Homebrew 7 upgrades **dependents**
+   by default, so three "targeted" packages can pull in 40 (ca-certificates
+   alone pulls in openssl and everything that links it).
+2. Standalone things (Go binaries like caddy, the ca-certificates data bundle):
+   `HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew upgrade <name>`.
+3. A shared library with a new major (simdjson 4 → 5) breaks whatever still
+   links the old one: upgrade all its users together (`brew uses --installed
+   <lib>`), for example node, node@22 and node@24 in one command.
+4. `HOMEBREW_NO_INSTALL_CLEANUP=1` keeps the old kegs for rollback.
+5. A process started from a `Cellar/<name>/<version>` path keeps running the
+   old version until restarted: `brew services restart <name>`, or
+   `launchctl kickstart -k gui/$(id -u)/<label>` (code-server is
+   `com.anima.code-server`). Validate configs first
+   (`caddy validate --config /opt/homebrew/etc/Caddyfile`), then check the
+   sites respond.
+6. Casks installed from a `.pkg` (git-credential-manager) need sudo, which an
+   unattended session doesn't have: give Michael the command. Self-updating
+   apps only update while they run, so an old one is unused: open it or
+   uninstall it. Remote-access tools and tunnels that aren't in use should be
+   uninstalled, not upgraded.
+7. The full `brew upgrade` (100+ formulae, openssl moves) belongs in a session
+   where Michael is at the machine, because code-server is his only way back in.
+
+**Oct 2026 notes:** Homebrew added openssl@4. Installing it unlinks
+openssl@3's symlinks (`/opt/homebrew/bin/openssl` becomes v4), and openssl@3
+moved to the 3.5 LTS line, so `brew outdated` shows it going 3.6.5 → 3.5.9.
+Formulae link through `opt/openssl@3`, so they are unaffected.
 
 ## Ecosystem audit commands
 
