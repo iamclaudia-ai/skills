@@ -1,0 +1,36 @@
+{
+  "id": "auditing-dependencies",
+  "description": "Audit a project's dependencies for vulnerabilities and supply-chain gaps: ecosystems, release-age window, floating specifiers, @latest runs, runtime security releases.",
+  "commands": {
+    "posture": {
+      "script": "scripts/posture.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Report ecosystems + audit commands, release-age window and excludes, floating specifiers, @latest executions, and Bun/Node versions vs latest security releases.",
+      "args": [
+        {
+          "name": "project-dir",
+          "type": "absolute-folder",
+          "required": true,
+          "description": "Project root to inspect"
+        }
+      ],
+      "timeoutMs": 60000
+    },
+    "release-age": {
+      "script": "scripts/release-age.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Publish age of npm package versions, whether a release-age window blocks them, latest version, and declared ranges for chosen dependencies.",
+      "args": [
+        {
+          "name": "specs",
+          "type": "string",
+          "required": true,
+          "description": "[--window-days N] [--deps a,b] name@version|name@latest ..."
+        }
+      ],
+      "timeoutMs": 60000
+    }
+  }
+}
