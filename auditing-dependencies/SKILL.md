@@ -192,6 +192,24 @@ matter only when they parse untrusted files.
    uninstalled, not upgraded.
 7. The full `brew upgrade` (100+ formulae, openssl moves) belongs in a session
    where Michael is at the machine, because code-server is his only way back in.
+   Save `brew list --versions` and `brew bundle dump` to `~/.anima/backups/`
+   first. Run it with `--formula` (pkg casks would stall on a sudo prompt) in
+   its own tmux session, teeing to a log. tmux runs it under zsh, so the exit
+   status is `$pipestatus[1]`, not `PIPESTATUS`.
+8. Afterwards: grep the log for "`brew link` step did not complete". A new
+   version can add a binary that another formula already owns (ghostscript
+   10.08 added `gsx`, which gpane owns). Link with `brew link --overwrite
+   <formula>`, then give the other formula its binary back with
+   `ln -sfh ../Cellar/<other>/<ver>/bin/<bin> /opt/homebrew/bin/<bin>` (the dcg
+   guard blocks `brew unlink`, mistaking it for POSIX `unlink`). Then
+   restart keg-backed processes, check the sites, and run `brew missing` and
+   `brew linkage --test`.
+9. `brew uninstall` **autoremoves** formulae nothing depends on anymore. With
+   cleanup off, it removes only their newest version and leaves the old ones
+   behind: finish the job with `brew uninstall --force <name>`. Reinstall any
+   you want to keep, so they count as requested (mise generates completions
+   with `usage`). A keg that won't delete usually has root-owned
+   `__pycache__` files from a `sudo python` run, and only Michael can remove those.
 
 **Oct 2026 notes:** Homebrew added openssl@4. Installing it unlinks
 openssl@3's symlinks (`/opt/homebrew/bin/openssl` becomes v4), and openssl@3
