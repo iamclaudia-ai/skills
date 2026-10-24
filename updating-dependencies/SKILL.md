@@ -22,7 +22,7 @@ Michael to review. Security triage techniques live in the
   reports to `~/.anima/tasks/deps-sweep/<date>/` (one `.md` + `.json` per repo,
   plus `SUMMARY.md`), and start one session per actionable repo, at most
   `maxConcurrentSessions` at a time. `--dry-run` writes reports and starts
-  nothing.
+  nothing. `--only` matches the GitHub slug (`owner/name`) or the local path.
 
 ```bash
 anima skills run updating-dependencies sweep --dry-run

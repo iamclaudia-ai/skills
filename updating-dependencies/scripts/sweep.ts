@@ -434,7 +434,7 @@ const outDir = join(homedir(), ".anima", "tasks", "deps-sweep", date);
 mkdirSync(outDir, { recursive: true });
 
 const { repos, skipped } = discover(cfg);
-const selected = only ? repos.filter((r) => r.path.includes(only)) : repos;
+const selected = only ? repos.filter((r) => r.path.includes(only) || r.slug.includes(only)) : repos;
 console.log(`deps sweep ${date}: ${selected.length} repo(s)${dryRun ? " (dry run)" : ""}`);
 
 const reports: RepoReport[] = [];
