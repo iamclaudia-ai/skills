@@ -429,8 +429,11 @@ function startSession(r: RepoReport, prompt: string, date: string): string | nul
 }
 
 function spawnNamed(cwd: string, name: string, prompt: string): string | null {
+  // yolo, explicitly: the sweep pushes branches and opens PRs unattended, and
+  // spawned sessions otherwise default to the auto profile, which can stop on
+  // a permission prompt with nobody there to answer it.
   const res = run([ANIMA, "session", "spawn_agent", "--parentSessionId", "NEW", "--cwd", cwd,
-    "--name", name, "--prompt", prompt], undefined, 60_000);
+    "--name", name, "--profile", "yolo", "--prompt", prompt], undefined, 60_000);
   if (!res.ok) {
     console.error(`  failed to start session: ${res.out.split("\n")[0]}`);
     return null;
