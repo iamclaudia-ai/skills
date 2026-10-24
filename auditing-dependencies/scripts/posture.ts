@@ -113,6 +113,19 @@ for (const file of [...manifests(root), ...hookFiles]) {
 }
 if (flagged === 0) console.log("none");
 
+// ── Credentials in git remotes ────────────────────────────────
+section("Credentials in git remote URLs");
+const remotes = Bun.spawnSync(["git", "-C", root, "remote", "-v"], { stderr: "ignore" });
+const leaks = new Set<string>();
+for (const line of remotes.stdout.toString().split("\n")) {
+  const match = line.match(/^(\S+)\s+\w+:\/\/([^/@\s]+)@(\S+)/);
+  // user@host alone is fine (ssh-style); a ':' before '@' means user:secret.
+  if (match?.[2].includes(":")) {
+    leaks.add(`${match[1]}: ${match[2].split(":")[0]}:****@${match[3]}  ← revoke the token, then git remote set-url`);
+  }
+}
+console.log(leaks.size > 0 ? [...leaks].join("\n") : "none");
+
 // ── Runtimes ──────────────────────────────────────────────────
 section("Runtimes");
 const local = (cmd: string[]) => {

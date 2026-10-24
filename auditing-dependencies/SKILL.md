@@ -25,8 +25,8 @@ Invoked through the **anima skills runner**:
 - **`posture <project-dir>`**: ecosystems present with the audit command for each,
   the configured release-age window and its excludes, floating `latest`/`*`
   specifiers and `npx|bunx ...@latest` runs in package.json scripts and
-  `.husky` hooks, and Bun/Node versions vs latest (Node's index marks
-  security releases).
+  `.husky` hooks, credentials embedded in git remote URLs (masked), and
+  Bun/Node versions vs latest (Node's index marks security releases).
 - **`release-age [--window-days N] [--deps a,b] <name@version|name@latest>...`**:
   publish age of npm versions, whether each is blocked by an N-day window
   (default 3), the latest version, and the ranges it declares for the
