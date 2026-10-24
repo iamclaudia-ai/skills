@@ -1,0 +1,21 @@
+{
+  "id": "updating-dependencies",
+  "description": "Weekly dependency sweep: scan active personal repos, write reports, start one session per repo to open safe-batch and breaking-upgrade PRs.",
+  "commands": {
+    "sweep": {
+      "script": "scripts/sweep.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Discover repos, scan lockfiles on the remote default branch, write reports to ~/.anima/tasks/deps-sweep/<date>/, and start sessions for actionable repos (a few at a time).",
+      "args": [
+        {
+          "name": "flags",
+          "type": "string",
+          "required": false,
+          "description": "[--dry-run] [--only <path substring>]"
+        }
+      ],
+      "timeoutMs": 21600000
+    }
+  }
+}
