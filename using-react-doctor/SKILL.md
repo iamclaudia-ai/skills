@@ -30,13 +30,13 @@ bun run react-doctor:staged   # only staged files — pre-commit ready
 For ad-hoc scans of a single workspace, invoke directly:
 
 ```bash
-NO_COLOR=1 npx --yes react-doctor@latest -y packages/ui                  # human-readable
-npx --yes react-doctor@latest -y packages/ui --json --offline            # structured data
-npx --yes react-doctor@latest -y packages/ui --explain src/foo.tsx:42    # why a rule fired
-npx --yes react-doctor@latest -y packages/ui --verbose                   # every rule shown
+NO_COLOR=1 bunx react-doctor -y packages/ui                  # human-readable
+bunx react-doctor -y packages/ui --json --offline            # structured data
+bunx react-doctor -y packages/ui --explain src/foo.tsx:42    # why a rule fired
+bunx react-doctor -y packages/ui --verbose                   # every rule shown
 ```
 
-Two yes-flags, two prompts: react-doctor's `-y` suppresses its workspace-picker; **npx's `--yes`** auto-confirms npx's own "Ok to install?" prompt. Without npx `--yes`, a non-interactive context (CI, the tmux command wrapper) blocks forever on npx's prompt — the `bun run react-doctor*` scripts already include it. (Alternatively, `</dev/null` on the command forces EOF.)
+react-doctor is a **pinned devDependency** in Anima (`"react-doctor": "0.9.18"`), so `bunx react-doctor` runs the locked copy from `node_modules/.bin`. Never go back to `npx --yes react-doctor@latest`: it downloads and executes whatever was published most recently on every push, outside the lockfile and the `minimumReleaseAge` window, which is the exact path a hijacked release takes. Upgrade it like any other dependency. The `-y` flag still matters: it suppresses react-doctor's workspace picker, which otherwise blocks forever in a non-interactive context (CI, the tmux command wrapper).
 
 ## Two output modes, two purposes
 
@@ -71,7 +71,7 @@ When aggregating across workspaces, tag each entry with its `package` for filter
 Save the JSON once and re-query. Extract `.diagnostics` into the file so the snippets below operate on a flat array (the raw output is an object — see "Two output modes" above):
 
 ```bash
-npx --yes react-doctor@latest -y packages/ui --json --offline | jq '.diagnostics' > /tmp/rd.json
+bunx react-doctor -y packages/ui --json --offline | jq '.diagnostics' > /tmp/rd.json
 ```
 
 **Group by rule, sorted by frequency:**
@@ -114,7 +114,7 @@ for dir in packages/ui extensions/audiobooks extensions/bogart extensions/chat \
            extensions/control extensions/editor extensions/memory \
            extensions/presenter extensions/scheduler clients/vscode \
            packages/gateway packages/shared; do
-  npx react-doctor@latest -y "$dir" --json --offline 2>/dev/null \
+  bunx react-doctor -y "$dir" --json --offline 2>/dev/null \
     | jq --arg pkg "$dir" '[.[] | . + {package: $pkg}]' >> /tmp/rd-all.json
 done
 jq -s 'add' /tmp/rd-all.json > /tmp/rd-monorepo.json
@@ -170,11 +170,11 @@ Authoritative list lives in root `package.json` under `reactDoctor.ignore.rules`
 
 ## The pre-push ratchet
 
-`bun run react-doctor:diff` runs in pre-push with `--fail-on error`. Behavior:
+`bun run react-doctor:diff` runs in pre-push with `--blocking error`. Behavior:
 
 - **Errors block the push.** Any new error introduced in a changed file fails the push.
 - **Warnings are advisory.** The pre-existing warnings don't block ordinary pushes — they get worked through in cleanup PRs.
-- **`--diff origin/main`** scans only files changed vs `origin/main` (i.e. the commits you're about to push). Untouched files aren't re-evaluated. (Earlier it used `--diff main`, but on the `main` branch base==current is degenerate and react-doctor over-scans the whole project, surfacing pre-existing errors — `origin/main` scopes correctly to un-pushed work.)
+- **`--scope changed --base origin/main`** scans only files changed vs `origin/main` (i.e. the commits you're about to push). Untouched files aren't re-evaluated. (`--diff <ref>` is the deprecated spelling. Earlier it used `main` as the base, but on the `main` branch base==current is degenerate and react-doctor over-scans the whole project, surfacing pre-existing errors — `origin/main` scopes correctly to un-pushed work.)
 
 This means the error count can only go _down_ from here. If a future change introduces a real bug-class issue (e.g. a new `useEffect` without cleanup), pre-push catches it before it reaches main.
 
@@ -185,7 +185,7 @@ To temporarily bypass (only when truly needed — e.g. emergency revert): `git p
 A repeatable rhythm for a cleanup PR:
 
 1. **Pick a rule or theme** — e.g. "all a11y warnings," "all `no-array-index-as-key`," "one specific component." Don't mix unrelated rules in one PR; they review badly.
-2. **Capture a baseline** — `npx react-doctor@latest -y . --json --offline > /tmp/rd-before.json`. Save the issue count.
+2. **Capture a baseline** — `bunx react-doctor -y . --json --offline > /tmp/rd-before.json`. Save the issue count.
 3. **Build the target list** — file-grouped with the jq snippet above.
 4. **Work file-by-file** — read fresh, fix every relevant flag, save.
 5. **Re-run after each file** — confirm the count dropped. Catch any new flags you accidentally introduced (rare but happens).
@@ -205,6 +205,6 @@ A repeatable rhythm for a cleanup PR:
 
 ## Notes
 
-- This skill is pure knowledge — no scripts to invoke. The "tooling" is `npx react-doctor@latest` itself, wrapped by `bun run react-doctor*` scripts in root `package.json`.
+- This skill is pure knowledge — no scripts to invoke. The "tooling" is the pinned `react-doctor` devDependency (`bunx react-doctor`), wrapped by `bun run react-doctor*` scripts in root `package.json`.
 - Working files for the current cleanup live in `tmp/react-doctor/` (gitignored). Includes `progress.md`, `ignore-decisions.md`, `baseline.json`, `all-diagnostics.json`.
 - For the full rule catalog and rule-by-rule docs, see [react-doctor's GitHub](https://github.com/millionco/react-doctor) or run `--verbose` to see every rule name surfaced in a single run.
