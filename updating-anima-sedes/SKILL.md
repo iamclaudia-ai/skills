@@ -17,7 +17,7 @@ same code and as close to the same config as vesuvius. This skill keeps it there
 
 ## Available Commands
 
-- **`update [--check] [--from <commit>]`**: run **on the machine being updated**. `--check` only reports. `--from` finishes an update that stopped after the fast-forward (pass the commit it started from).
+- **`update [--check] [--from <commit>]`**: run **on the machine being updated**. `--check` only reports. `--from` finishes an update that stopped after the fast-forward (pass the commit it started from). `--restart` only restarts and health-checks, for after a config or `.env` edit.
 - **`config-keys`**: this machine's `anima.json` key paths, values elided.
 - **`config-diff <ssh-host>`**: compare key paths with another machine. Run from vesuvius.
 
@@ -44,8 +44,8 @@ same code and as close to the same config as vesuvius. This skill keeps it there
    ```
    `<` lines are only on vesuvius, `>` only on Sedes. Some drift is intended (see Notes). Fix
    the rest by editing Sedes' `~/.anima/anima.json` with a small bun script that copies values
-   from vesuvius's file over ssh **without printing them**, then run `update` again (or restart
-   the watchdog) so the gateway reads it.
+   from vesuvius's file over ssh **without printing them**, then run `update --restart` so the gateway
+   reads it.
 
 ## Notes
 

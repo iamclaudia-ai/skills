@@ -18,7 +18,10 @@
  * Also fast-forwards the skills repo when it is present, so skill scripts stay
  * in step with the platform that runs them.
  *
- * Usage: update.ts [--check] [--from <commit>]
+ * Usage: update.ts [--check] [--from <commit>] [--restart]
+ *
+ * --restart skips git entirely: restart the watchdog and wait for health, for
+ * after an anima.json or .env edit.
  *
  * --from finishes an update that stopped part-way: the checkout is already at
  * origin/main, so there is nothing "incoming", but the install / redeploy /
@@ -212,6 +215,14 @@ const branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], repo);
 if (branch !== "main") fail(`Checkout is on '${branch}', not main.`);
 const dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], repo);
 if (dirty) fail(`Checkout has tracked changes; refusing to touch it:\n${dirty}`);
+
+if (process.argv.includes("--restart")) {
+  // After a config or .env edit: no code change, just restart and verify.
+  const restarted = await waitHealthy(restartWatchdog());
+  if (!restarted.ok) fail(`Unhealthy after restart: ${restarted.detail}. Look at ~/.anima/logs.`);
+  console.log(`✅ Restarted: ${restarted.detail}.`);
+  process.exit(0);
+}
 
 pullSkills();
 
