@@ -16,8 +16,7 @@
  *      roll the code back to the previous commit and restart again.
  *
  * Also fast-forwards the skills and memory repos when present, so skill scripts
- * and the persona stay
- * in step with the platform that runs them.
+ * and the persona stay in step with the platform that runs them.
  *
  * Usage: update.ts [--check] [--from <commit>] [--restart]
  *
