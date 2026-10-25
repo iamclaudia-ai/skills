@@ -1,0 +1,44 @@
+{
+  "id": "updating-anima-sedes",
+  "description": "Update a machine's Anima checkout to origin/main safely (report, fast-forward, install, redeploy watchdog, restart, health-check, roll back), and compare anima.json between machines.",
+  "commands": {
+    "update": {
+      "script": "scripts/update.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Run ON the machine being updated. Fetches, reports incoming commits (migrations, watchdog, deps, config shape), fast-forwards main, bun install / watchdog:deploy when needed, restarts the watchdog, waits for health, rolls back on failure. Also fast-forwards the skills repo.",
+      "args": [
+        {
+          "name": "--check",
+          "type": "string",
+          "required": false,
+          "description": "Report only: what would change, without touching anything"
+        }
+      ],
+      "timeoutMs": 600000
+    },
+    "config-keys": {
+      "script": "scripts/config-keys.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Print this machine's anima.json key paths (values elided except booleans and model/runtime/profile/mode).",
+      "args": [],
+      "timeoutMs": 30000
+    },
+    "config-diff": {
+      "script": "scripts/config-diff.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Compare this machine's anima.json key paths with another machine's over ssh. No secret values are printed.",
+      "args": [
+        {
+          "name": "ssh-host",
+          "type": "string",
+          "required": true,
+          "description": "ssh host of the other machine, e.g. anima-sedes"
+        }
+      ],
+      "timeoutMs": 60000
+    }
+  }
+}
