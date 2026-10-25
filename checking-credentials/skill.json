@@ -1,0 +1,21 @@
+{
+  "id": "checking-credentials",
+  "description": "Check the tokens and certificates Anima depends on (GitHub, Claude subscription, Zoho mail, wildcard SSL certs) and notify Michael about any that are invalid or expiring.",
+  "commands": {
+    "check": {
+      "script": "scripts/check.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Run every check that applies on this host, print a report, and send problems through notify.send. Exits 0 when the report was delivered.",
+      "args": [
+        {
+          "name": "--no-notify",
+          "type": "string",
+          "required": false,
+          "description": "Print the report only"
+        }
+      ],
+      "timeoutMs": 300000
+    }
+  }
+}
