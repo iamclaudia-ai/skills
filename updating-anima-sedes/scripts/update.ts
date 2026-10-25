@@ -18,7 +18,11 @@
  * Also fast-forwards the skills repo when it is present, so skill scripts stay
  * in step with the platform that runs them.
  *
- * Usage: update.ts [--check]
+ * Usage: update.ts [--check] [--from <commit>]
+ *
+ * --from finishes an update that stopped part-way: the checkout is already at
+ * origin/main, so there is nothing "incoming", but the install / redeploy /
+ * restart never happened. It treats <commit> as where the update started.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -27,9 +31,23 @@ import { dirname, join } from "node:path";
 
 const HOME = homedir();
 // Over ssh the PATH has neither bun nor Homebrew, and package scripts spawn
-// `bun` themselves, so put both in front before running anything.
+// `bun` themselves, so put both in front. Bun.spawn looks executables up on
+// the PATH the process started with, so children also get `env` explicitly
+// and `bun` itself is spawned by absolute path (see `resolve`).
 process.env.PATH = [dirname(process.execPath), "/opt/homebrew/bin", process.env.PATH].join(":");
+const ENV = { ...process.env };
+
+/** `bun` → this very bun binary; everything else as given. */
+function resolve(cmd: string[]): string[] {
+  return cmd[0] === "bun" ? [process.execPath, ...cmd.slice(1)] : cmd;
+}
 const CHECK_ONLY = process.argv.includes("--check");
+const fromIndex = process.argv.indexOf("--from");
+const FROM = fromIndex === -1 ? undefined : process.argv[fromIndex + 1];
+if (fromIndex !== -1 && !FROM) {
+  console.error("❌ --from needs a commit");
+  process.exit(1);
+}
 const PLIST = join(HOME, "Library/LaunchAgents/com.anima.watchdog.plist");
 const HEALTH_TIMEOUT_MS = 120_000;
 
@@ -50,7 +68,7 @@ function fail(message: string): never {
 }
 
 function run(cmd: string[], cwd?: string): string {
-  const result = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
+  const result = Bun.spawnSync(resolve(cmd), { cwd, env: ENV, stdout: "pipe", stderr: "pipe" });
   if (result.exitCode !== 0) {
     fail(`${cmd.join(" ")} failed (exit ${result.exitCode}):\n${result.stderr.toString().trim()}`);
   }
@@ -59,7 +77,12 @@ function run(cmd: string[], cwd?: string): string {
 
 function step(cmd: string[], cwd: string): void {
   console.log(`  $ ${cmd.join(" ")}`);
-  const result = Bun.spawnSync(cmd, { cwd, stdout: "inherit", stderr: "inherit" });
+  const result = Bun.spawnSync(resolve(cmd), {
+    cwd,
+    env: ENV,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
   if (result.exitCode !== 0) fail(`${cmd.join(" ")} failed (exit ${result.exitCode})`);
 }
 
@@ -85,7 +108,9 @@ function findRepo(): string {
 function classify(files: string[]) {
   return {
     migrations: files.filter((f) => /^packages\/gateway\/migrations\/.+\.sql$/.test(f)),
-    watchdog: files.some((f) => f.startsWith("packages/watchdog/") || f.startsWith("packages/shared/")),
+    watchdog: files.some(
+      (f) => f.startsWith("packages/watchdog/") || f.startsWith("packages/shared/"),
+    ),
     deps: files.some((f) => f === "bun.lock" || f.endsWith("package.json")),
     config: files.filter((f) => /packages\/shared\/src\/config\.ts$|anima\.example\.json$/.test(f)),
   };
@@ -191,14 +216,14 @@ if (dirty) fail(`Checkout has tracked changes; refusing to touch it:\n${dirty}`)
 pullSkills();
 
 run(["git", "fetch", "-q", "origin"], repo);
-const prev = run(["git", "rev-parse", "HEAD"], repo);
-const incoming = run(["git", "log", "--oneline", "--no-decorate", "HEAD..origin/main"], repo);
+const prev = FROM ? run(["git", "rev-parse", FROM], repo) : run(["git", "rev-parse", "HEAD"], repo);
+const incoming = run(["git", "log", "--oneline", "--no-decorate", `${prev}..origin/main`], repo);
 if (!incoming) {
   console.log(`✅ Anima is up to date at ${prev.slice(0, 8)}.`);
   process.exit(0);
 }
 
-const files = run(["git", "diff", "--name-only", "HEAD", "origin/main"], repo).split("\n");
+const files = run(["git", "diff", "--name-only", prev, "origin/main"], repo).split("\n");
 const flags = classify(files);
 const count = incoming.split("\n").length;
 console.log(`\n${count} incoming commit(s):\n${incoming}\n`);
@@ -227,7 +252,9 @@ if (health.ok) {
   process.exit(0);
 }
 
-console.error(`\n⚠️  Unhealthy after update (${health.detail}). Rolling back to ${prev.slice(0, 8)}.`);
+console.error(
+  `\n⚠️  Unhealthy after update (${health.detail}). Rolling back to ${prev.slice(0, 8)}.`,
+);
 step(["git", "reset", "-q", "--hard", prev], repo);
 if (flags.deps) step(["bun", "install"], repo);
 if (flags.watchdog) step(["bun", "run", "watchdog:deploy"], repo);

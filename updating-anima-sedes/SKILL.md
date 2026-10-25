@@ -17,7 +17,7 @@ same code and as close to the same config as vesuvius. This skill keeps it there
 
 ## Available Commands
 
-- **`update [--check]`**: run **on the machine being updated**. `--check` only reports.
+- **`update [--check] [--from <commit>]`**: run **on the machine being updated**. `--check` only reports. `--from` finishes an update that stopped after the fast-forward (pass the commit it started from).
 - **`config-keys`**: this machine's `anima.json` key paths, values elided.
 - **`config-diff <ssh-host>`**: compare key paths with another machine. Run from vesuvius.
 
