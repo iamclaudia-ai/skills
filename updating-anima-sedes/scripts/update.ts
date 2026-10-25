@@ -15,7 +15,8 @@
  *   5. Wait for every supervised service to come back healthy. If they don't,
  *      roll the code back to the previous commit and restart again.
  *
- * Also fast-forwards the skills repo when it is present, so skill scripts stay
+ * Also fast-forwards the skills and memory repos when present, so skill scripts
+ * and the persona stay
  * in step with the platform that runs them.
  *
  * Usage: update.ts [--check] [--from <commit>] [--restart]
@@ -186,24 +187,46 @@ async function waitHealthy(since: number): Promise<{ ok: boolean; detail: string
   return { ok: false, detail };
 }
 
-function pullSkills(): void {
-  const dir = join(HOME, "Projects/iamclaudia-ai/skills");
+/** Repos that ride along with Anima: skill scripts, and my memory (persona included). */
+const COMPANION_REPOS = [
+  { label: "skills", dir: join(HOME, "Projects/iamclaudia-ai/skills") },
+  { label: "memory", dir: join(HOME, "memory") },
+];
+
+/**
+ * Fast-forward a companion repo. Never fatal: a repo that can't fast-forward
+ * (local commits, a fetch failure) is reported and left alone, because it
+ * must not block the Anima update itself.
+ */
+function pullCompanion(label: string, dir: string): void {
   if (!existsSync(join(dir, ".git"))) return;
-  const dirty = run(["git", "status", "--porcelain", "--untracked-files=no"], dir);
-  if (dirty) {
-    console.log("⚠️  skills repo has local changes; not pulling it");
+  const git = (...args: string[]) =>
+    Bun.spawnSync(["git", ...args], { cwd: dir, env: ENV, stdout: "pipe", stderr: "pipe" });
+  const text = (r: ReturnType<typeof git>) => r.stdout.toString().trim();
+
+  if (text(git("status", "--porcelain", "--untracked-files=no"))) {
+    console.log(`⚠️  ${label}: local changes; not pulling it`);
     return;
   }
-  const before = run(["git", "rev-parse", "--short", "HEAD"], dir);
-  run(["git", "fetch", "-q", "origin"], dir);
-  if (CHECK_ONLY) {
-    const n = run(["git", "rev-list", "--count", "HEAD..origin/main"], dir);
-    console.log(`skills: ${n} commit(s) behind`);
+  const fetched = git("fetch", "-q", "origin");
+  if (fetched.exitCode !== 0) {
+    console.log(`⚠️  ${label}: fetch failed (${fetched.stderr.toString().trim().split("\n")[0]})`);
     return;
   }
-  run(["git", "merge", "-q", "--ff-only", "origin/main"], dir);
-  const after = run(["git", "rev-parse", "--short", "HEAD"], dir);
-  console.log(before === after ? `skills: up to date (${after})` : `skills: ${before} → ${after}`);
+  const behind = text(git("rev-list", "--count", "HEAD..origin/main"));
+  if (CHECK_ONLY || behind === "0") {
+    console.log(`${label}: ${behind === "0" ? "up to date" : `${behind} commit(s) behind`}`);
+    return;
+  }
+  const before = text(git("rev-parse", "--short", "HEAD"));
+  const merged = git("merge", "-q", "--ff-only", "origin/main");
+  if (merged.exitCode !== 0) {
+    console.log(`⚠️  ${label}: can't fast-forward (diverged?); left at ${before}`);
+    return;
+  }
+  console.log(
+    `${label}: ${before} → ${text(git("rev-parse", "--short", "HEAD"))} (${behind} commits)`,
+  );
 }
 
 // ── main ─────────────────────────────────────────────────────
@@ -224,7 +247,7 @@ if (process.argv.includes("--restart")) {
   process.exit(0);
 }
 
-pullSkills();
+for (const { label, dir } of COMPANION_REPOS) pullCompanion(label, dir);
 
 run(["git", "fetch", "-q", "origin"], repo);
 const prev = FROM ? run(["git", "rev-parse", FROM], repo) : run(["git", "rev-parse", "HEAD"], repo);
