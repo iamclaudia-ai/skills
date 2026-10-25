@@ -1,6 +1,6 @@
 ---
 name: updating-dependencies
-description: "MUST be used for the weekly dependency sweep, and whenever a session is started to update a repo's dependencies from a sweep report. Discovers Michael's active personal repos (never beehiiv work repos), scans each lockfile on the remote default branch for advisories and outdated packages, and opens PRs: one batch PR of security fixes and safe (patch/minor) updates first, then one PR per breaking upgrade group, last and separately. Closing a breaking PR unmerged defers it. Triggers on: weekly dependency sweep, deps sweep, dependency sweep report, update dependencies weekly, scheduled dependency updates, dependency PRs, breaking upgrade PR, major version upgrade, safe updates batch, renovate, dependabot alternative, defer an upgrade, refresh dependency PR, sweep all repos."
+description: "MUST be used for the weekly dependency sweep, and whenever a session is started to update a repo's dependencies from a sweep report. Discovers Michael's active personal repos (never beehiiv work repos), scans each lockfile on the remote default branch for advisories and outdated packages, and opens PRs: one batch PR of security fixes and safe (patch/minor) updates first, then one PR per breaking upgrade group, each stacked on the batch with gh-stack. Closing a breaking PR unmerged defers it. Triggers on: weekly dependency sweep, deps sweep, dependency sweep report, update dependencies weekly, scheduled dependency updates, dependency PRs, breaking upgrade PR, major version upgrade, safe updates batch, renovate, dependabot alternative, defer an upgrade, refresh dependency PR, stacked dependency PRs, sweep all repos."
 ---
 
 # Updating Dependencies
@@ -53,9 +53,18 @@ explain it in the PR body. Follow the repo's own CLAUDE.md conventions.
 ### Rules that never bend
 
 - **Never touch the main working copy.** It may hold Michael's uncommitted
-  work. Work only in a worktree.
-- **Never push to the default branch, and never force-push.** To refresh a PR
-  branch, merge the base into it instead of rebasing.
+  work. Work only in a worktree. The one exception is step 5's `gh-stack add`,
+  which writes stack metadata under `.git/` and checks nothing out.
+- **Stack the PRs with `gh-stack`** (load `using-gh-stack`). The safe batch is
+  the bottom of the stack, and each breaking PR is a child of it. The repos
+  squash merge, so a branch built on a merged PR has to be moved with
+  `gh-stack sync`. A plain `git rebase origin/<default>` replays the merged
+  PR's original commits, and they conflict with their own squashed copy
+  (evolution-mobile #172, 2026-10-25).
+- **Never push to the default branch, and never force-push by hand.** The
+  only force-pushes allowed are the `--force-with-lease` pushes that `gh-stack
+  submit`/`sync` make to this sweep's own `deps/*` branches. Never merge the
+  base into a branch either: repos like evolution-mobile forbid merge commits.
 - **Branch names are the contract.** Breaking PRs use the exact `branch` from
   the report: deferral works by matching closed-PR branch names.
 - **Respect the release-age window.** Do not exempt anything except a
@@ -64,12 +73,18 @@ explain it in the PR body. Follow the repo's own CLAUDE.md conventions.
 ### 1. Set up
 
 1. Read the report (`.md` for you, `.json` for exact values).
-2. `git -C <repo> fetch origin`
-3. Safe branch: if the report lists an open `deps/sweep-*` PR, reuse its
-   branch and merge `origin/<default>` into it. Otherwise create
-   `deps/sweep-<date>`:
-   `git -C <repo> worktree add <repo>.worktrees/deps-<date> -b deps/sweep-<date> origin/<default>`
-4. Install in the worktree with the repo's package manager (`bun install`,
+2. `git -C <repo> fetch origin`, and `export GH_STACK_YES=1` (gh-stack's
+   non-interactive mode).
+3. **One worktree for the whole run.** gh-stack keeps its metadata in the
+   worktree's own git dir (`.git/worktrees/<name>/.gh-stack`), so every branch
+   of the stack has to live in the same worktree. Switch branches inside it.
+4. Safe branch: if the report lists an open `deps/sweep-*` PR, reuse its
+   branch: `git -C <repo> worktree add <repo>.worktrees/deps-<date>
+   <branch>`, then `gh-stack add` and `gh-stack sync` to move it onto the
+   default branch. Otherwise create `deps/sweep-<date>`:
+   `git -C <repo> worktree add <repo>.worktrees/deps-<date> -b deps/sweep-<date> origin/<default>`,
+   then `gh-stack init --parent <default>` inside it.
+5. Install in the worktree with the repo's package manager (`bun install`,
    `pnpm install --frozen-lockfile`, `npm ci`). It must pass before you change
    anything. If it doesn't, stop and report why in your final message.
 
@@ -86,7 +101,9 @@ explain it in the PR body. Follow the repo's own CLAUDE.md conventions.
    test suite, and the build. Smoke-test native packages.
 5. **An update breaks something?** Drop that one update (revert it), keep the
    rest, and list it under "Held back" with the reason. Never ship red.
-6. Commit with conventional messages, push, and open the PR:
+6. Commit with conventional messages, then push and open the PR with
+   `gh-stack submit -t "<title>" --body-file <body>` (add labels afterwards
+   with `gh pr edit --add-label`):
    - Title: `chore(deps): weekly dependency sweep <date>`
    - Body: a table of security fixes (package, from → to, GHSA, severity),
      safe updates, anything held back with reasons, what is cooling until next
@@ -101,30 +118,55 @@ first. Skip `open-pr` groups (refresh them instead, step 4) and `deferred` ones.
 
 For each group:
 
-1. Branch `<report branch>` from the safe branch, so the PR stacks on the
-   safe batch (base = the safe branch; if no safe PR was opened this run, base
-   = the default branch). Use its own worktree.
+1. Check out the safe branch, then `gh-stack create <report branch>`. The new
+   branch is a child of the safe branch, and of nothing else: every breaking
+   PR is a sibling, so closing one to defer it never strands another. (If no
+   safe PR was opened this run, `gh-stack init --parent <default>` on the
+   new branch instead.) Reinstall after switching branches: `node_modules`
+   still holds the last branch's versions.
 2. Read the breaking changes: GitHub releases (`gh release list/view -R
    owner/repo`), the CHANGELOG or migration guide in the package, or the docs.
 3. Upgrade every member of the group together, migrate the code, verify fully.
 4. Can't get it green in reasonable effort? Push it anyway and open it as a
-   **draft**, saying what's done and what's left.
-5. PR title `chore(deps)!: upgrade <family> to v<line>`. Body: the breaking
-   changes that matter here, the code changes made, verification, risk, and
-   this line: _"Close this PR without merging to defer <family> v<line>. The
-   sweep skips it until a newer line ships."_
+   **draft** (`gh-stack submit -d`), saying what's done and what's left.
+5. Open it with `gh-stack submit -t "<title>" --body-file <body>`. Title
+   `chore(deps)!: upgrade <family> to v<line>`. Body: the breaking changes
+   that matter here, the code changes made, verification, risk, and this line:
+   _"Close this PR without merging to defer <family> v<line>. The sweep skips
+   it until a newer line ships."_ Do not hand-write the stack: `submit`
+   maintains a "Stacked on" footer in every PR body. Still write a merge-order
+   line where the repo's conventions want one (evolution-mobile's
+   `scripts/my-prs.js` reads "merge after #N").
+6. Two siblings that edit the same line (for example, both add an entry to
+   `expo.install.exclude`) conflict once the first one merges. Say so in both
+   bodies.
 
 ### 4. Refresh open sweep PRs
 
 For each open `deps/*` PR in the report: `gh pr view <n> --json mergeable`. If
-it conflicts, merge its base into it, resolve lockfile conflicts by taking the
-base lockfile and reinstalling the PR's target versions, verify, and push. Note
-the refresh in a PR comment.
+it conflicts, track it in the run's worktree (`git branch <b> origin/<b>` if
+it isn't local, then `gh-stack add <b>`) and run `gh-stack sync`. Sync
+rebases it onto its parent, skipping the commits of a parent that was already
+squash merged, and pushes with `--force-with-lease`. On a conflict, resolve,
+`git add`, `git rebase --continue`, then `gh-stack restack --resume`. For a
+lockfile conflict, take the base lockfile and reinstall the PR's target
+versions. Verify, and note the refresh in a PR comment.
 
 ### 5. Finish
 
-- `git -C <repo> worktree remove <worktree>` for each worktree (branches stay
-  on the remote).
+- `git -C <repo> worktree remove <worktree>` (branches stay on the remote and
+  locally).
+- **Register the stack in Michael's checkout**, so he can land it with
+  gh-stack there: from `<repo>`, run `GH_STACK_YES=1 gh-stack add <branch>`
+  for each breaking branch, or for the safe branch alone if it has no
+  children. It finds the parents from the branches' ancestry, writes only
+  metadata, and does not change his current branch or working tree. Confirm
+  with `gh-stack stacks --json`.
+- **How to land it**, for the final message: squash merge the safe batch
+  first (on GitHub, or `gh-stack merge --base` from the safe branch), then run
+  `gh-stack sync` in his checkout. Sync sees the merge and moves the breaking
+  branches onto the default branch, so each can merge in turn. Never a plain
+  `git rebase` (see *Rules that never bend*).
 - Final message: one short list of PR links (safe batch first), what was held
   back or deferred, and anything Michael needs to decide. Michael reads this in
   the session, so make it the summary he'd want with his coffee.
