@@ -5,7 +5,7 @@
  * Invoked by the scheduler to orchestrate a creative flight:
  * 1. Determines flight mode (from args or day-of-week rotation)
  * 2. Picks an inspiration source
- * 3. Sends the creative prompt via `anima session.send_prompt`
+ * 3. Starts a named session with the creative prompt (`anima session spawn_agent --parentSessionId NEW`)
  * 4. The session handles file writing, image generation, etc.
  *
  * Usage:
@@ -321,7 +321,7 @@ Save this to: ${outputDir}/freeform.md${saveInstructions}`,
 // --- Anima CLI helpers ---
 
 async function animaCall(method: string, params: Record<string, string>): Promise<string> {
-  // CLI uses space-separated: anima session send_prompt (not session.send_prompt)
+  // CLI uses space-separated: anima session spawn_agent (not session.spawn_agent)
   const methodParts = method.split(".");
   const args = [...methodParts];
   for (const [key, value] of Object.entries(params)) {
@@ -374,16 +374,25 @@ async function main() {
 
   const { prompt } = buildPrompt(mode, outputDir);
 
-  // Send the creative prompt through the gateway
-  // send_prompt auto-creates a session if one doesn't exist for the cwd
-  console.log(`🚀  Sending prompt...`);
+  // Start a named top-level session for the flight. send_prompt used to
+  // auto-create one for the cwd, but it now requires an existing sessionId,
+  // which is why every scheduled flight failed. spawn_agent with
+  // parentSessionId NEW is the unattended path: it creates the session, titles
+  // it, and sends the prompt in one call. yolo explicitly, because a flight
+  // writes files and nobody is there to approve anything.
+  console.log(`🚀  Starting flight session...`);
 
-  await animaCall("session.send_prompt", {
-    content: prompt,
+  const date = new Date().toLocaleDateString("en-CA");
+  const result = await animaCall("session.spawn_agent", {
+    parentSessionId: "NEW",
     cwd: outputDir,
+    name: `Wings · ${mode} · ${date}`,
+    profile: "yolo",
+    prompt,
   });
 
-  console.log(`✅  Flight complete! Output saved to: ${outputDir}`);
+  const sessionId = (JSON.parse(result) as { sessionId?: string }).sessionId;
+  console.log(`✅  Flight started (session ${sessionId ?? "unknown"}). Output: ${outputDir}`);
 }
 
 main().catch((err) => {

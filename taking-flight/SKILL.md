@@ -89,7 +89,7 @@ Wings flights are scheduled via the `scheduling-tasks` skill on **anima-sedes** 
 
 ### Scheduling a Flight
 
-Use the scheduler extension to create exec tasks that run the flight script. The script uses `anima session.create_session` and `anima session.send_prompt` to route through the gateway — giving the session full access to all extensions, skills, and tools:
+Use the scheduler extension to create exec tasks that run the flight script. The script starts a named top-level session with `anima session spawn_agent --parentSessionId NEW` (yolo profile), routed through the gateway — giving the session full access to all extensions, skills, and tools:
 
 ```bash
 anima scheduler.add_task \
