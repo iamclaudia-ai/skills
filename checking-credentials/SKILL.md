@@ -44,3 +44,4 @@ anima skills run checking-credentials check               # report + notify on p
   itself fails, so that failure isn't silent.
 - Scheduled daily at 9:00 on vesuvius and Anima Sedes (`Credentials check`).
 - No secret value is ever printed; only login names and dates.
+- **Over ssh on Anima Sedes, load her `.env` first** (`set -a; . ~/Projects/anima/.env; set +a`). ssh can't open the login keychain, so without `CLAUDE_CODE_OAUTH_TOKEN` the claude check reports "Not logged in". Scheduled runs inherit the gateway's environment, which has it.
