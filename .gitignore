@@ -1,0 +1,6 @@
+# Skills installed by their own tools, not authored here. On Anima Sedes,
+# ~/.claude/skills is a link to this whole repo, so a tool that installs
+# its skill globally writes it into this checkout.
+
+# gh-stack learn --skill --global
+using-gh-stack/
