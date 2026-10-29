@@ -1,0 +1,29 @@
+{
+  "id": "extracting-claude-artifacts",
+  "description": "Turn a HAR capture of a claude.ai artifact into a local folder that runs standalone (frame runtime stripped, sibling files included).",
+  "commands": {
+    "list": {
+      "script": "scripts/list.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "List the artifact frame files a HAR captured (URL without query, status, type, size; never headers). Pass --all for every entry.",
+      "args": [
+        { "name": "har", "type": "absolute-file", "required": true, "description": "The .har capture" },
+        { "name": "--all", "type": "boolean", "required": false, "description": "List every entry, not just artifact frames" }
+      ],
+      "timeoutMs": 60000
+    },
+    "extract": {
+      "script": "scripts/extract.py",
+      "runtime": "python3",
+      "longRunning": false,
+      "description": "Write index.html (as served), run.html (frame runtime stripped) and every sibling file into a new folder; warns about referenced files the HAR missed.",
+      "args": [
+        { "name": "har", "type": "absolute-file", "required": true, "description": "The .har capture" },
+        { "name": "out", "type": "string", "required": true, "description": "Absolute path of a new or empty folder" },
+        { "name": "--version", "type": "string", "required": false, "description": "Frame version to extract when the HAR holds several (see list)" }
+      ],
+      "timeoutMs": 60000
+    }
+  }
+}
