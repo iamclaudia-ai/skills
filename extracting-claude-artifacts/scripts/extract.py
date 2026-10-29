@@ -15,7 +15,7 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 
 from har_artifacts import body_bytes, fail, frame_location, load_entries, strip_runtime
 

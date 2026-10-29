@@ -33,6 +33,8 @@ Each cost real time on Oct 26 before the HAR approach worked:
 
 Run through the anima skill runner (or directly with `python3 -I scripts/<name>.py`):
 
+- **`strip-headers <har>`**: rewrites the HAR in place without any request or response headers or
+  cookies (Michael's session). Extraction never needs them. Safe to rerun.
 - **`list <har> [--all]`**: the frame files the HAR captured, grouped by frame and version: URL
   with the query stripped, status, type and size. `--all` lists every entry. Never prints headers.
 - **`extract <har> <out> [--version <v>]`**: writes into a new or empty folder:
@@ -47,23 +49,28 @@ Run through the anima skill runner (or directly with `python3 -I scripts/<name>.
 
 1. **Ask Michael for the capture.** He opens the artifact in his browser with HTTP Toolkit
    intercepting (proven), lets it load fully, clicks into any screens that lazy-load files, and
-   saves a HAR. Use HTTP Toolkit: a Chrome DevTools Network export looked incomplete when Michael tried it. If a capture comes in from anywhere else, check `list` for missing bodies before extracting.
-2. **Inventory it safely:** `anima skills run extracting-claude-artifacts list /abs/path/capture.har`.
+   saves a HAR. Use HTTP Toolkit: a Chrome DevTools Network export looked incomplete when Michael
+   tried it. If a capture comes in from anywhere else, check `list` for missing bodies before extracting.
+2. **Strip the headers before anything else:**
+   `anima skills run extracting-claude-artifacts strip-headers /abs/path/capture.har`.
+   Do this first, every time, even when the HAR will be deleted soon.
+3. **Inventory it:** `anima skills run extracting-claude-artifacts list /abs/path/capture.har`.
    Check that a page entry exists and has a body. Several versions means several loads; pick with `--version`.
-3. **Extract into the current project's `tmp/`** (it survives reboots; the scratchpad doesn't):
+4. **Extract into the current project's `tmp/`** (it survives reboots; the scratchpad doesn't):
    `anima skills run extracting-claude-artifacts extract /abs/path/capture.har /abs/project/tmp/<name>`
-4. **Serve it** from that folder, in the background, bound to localhost:
+5. **Serve it** from that folder, in the background, bound to localhost:
    `python3 -I -m http.server <port> --bind 127.0.0.1`, then open `http://127.0.0.1:<port>/run.html`.
-5. **Drive it** with DOMINATRIX (`controlling-the-browser`) or agent-browser (`browsing-the-web`);
+6. **Drive it** with DOMINATRIX (`controlling-the-browser`) or agent-browser (`browsing-the-web`);
    everything is readable and clickable now. Read the inline `<script>` directly for data and logic.
-6. **Write a short README** in the folder: source link, who made it, capture date, and how to run it.
-7. **Clean up:** stop the server, and ask Michael to approve deleting the HAR.
+7. **Write a short README** in the folder: source link, who made it, capture date, and how to run it.
+8. **Clean up:** stop the server, and ask Michael to approve deleting the HAR.
 
 ## Safety
 
-- **A HAR holds Michael's session cookies and auth headers.** Never print, grep out or copy headers,
-  and never commit a HAR or put it anywhere shared. The scripts only print URLs without query
-  strings (frame tokens live there), statuses, types and sizes.
+- **A raw HAR holds Michael's session cookies and auth headers.** Run `strip-headers` before
+  anything else, never print or copy headers from an unstripped HAR, and never commit a HAR or put
+  it anywhere shared. A stripped HAR still holds the page contents and URLs with their query strings
+  (frame tokens, share keys), which is why `list` prints URLs without them.
 - Delete the HAR once the extraction is verified (with Michael's OK).
 - The extracted folder is a teammate's work: keep it in `tmp/`, don't publish or commit it.
 
