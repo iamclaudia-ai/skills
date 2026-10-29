@@ -169,24 +169,39 @@ const scene = playlist.scenes[nextIndex];
 const devices = await getDevices();
 const device = matchDevice(devices, playlist.device);
 
-const res = await fetch(`${API_BASE}/device/control`, {
-  method: "POST",
-  headers: { "Govee-API-Key": API_KEY!, "Content-Type": "application/json" },
-  body: JSON.stringify({
-    requestId: `autoplay-${Date.now()}`,
-    payload: {
-      sku: device.sku,
-      device: device.device,
-      capability: {
-        type: "devices.capabilities.dynamic_scene",
-        instance: "diyScene",
-        value: scene.value,
+async function setScene(): Promise<{ code: number; msg: string }> {
+  const res = await fetch(`${API_BASE}/device/control`, {
+    method: "POST",
+    headers: { "Govee-API-Key": API_KEY!, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId: `autoplay-${Date.now()}`,
+      payload: {
+        sku: device.sku,
+        device: device.device,
+        capability: {
+          type: "devices.capabilities.dynamic_scene",
+          instance: "diyScene",
+          value: scene.value,
+        },
       },
-    },
-  }),
-});
+    }),
+  });
+  return (await res.json()) as { code: number; msg: string };
+}
 
-const result = (await res.json()) as { code: number; msg: string };
+// A light on weak Wi-Fi drops off Govee's cloud for a few seconds at a time,
+// and Govee reports it as "Device is offline". Retry those briefly so a blip
+// doesn't fail the run; a light that stays offline still fails. The waits keep
+// the whole run under the scheduler's 15s timeout.
+const OFFLINE_RETRY_DELAYS_MS = [3000, 4000];
+
+let result = await setScene();
+for (const delay of OFFLINE_RETRY_DELAYS_MS) {
+  if (result.code === 200 || !/offline/i.test(result.msg)) break;
+  console.error(`… ${device.deviceName} offline, retrying in ${delay / 1000}s`);
+  await Bun.sleep(delay);
+  result = await setScene();
+}
 
 if (result.code !== 200) {
   console.error(`✗ Failed to set scene: ${result.msg}`);
