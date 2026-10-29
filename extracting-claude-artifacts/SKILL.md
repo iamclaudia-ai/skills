@@ -47,7 +47,7 @@ Run through the anima skill runner (or directly with `python3 -I scripts/<name>.
 
 1. **Ask Michael for the capture.** He opens the artifact in his browser with HTTP Toolkit
    intercepting (proven), lets it load fully, clicks into any screens that lazy-load files, and
-   saves a HAR. A Chrome DevTools Network export should also work but is untested.
+   saves a HAR. Use HTTP Toolkit: a Chrome DevTools Network export looked incomplete when Michael tried it. If a capture comes in from anywhere else, check `list` for missing bodies before extracting.
 2. **Inventory it safely:** `anima skills run extracting-claude-artifacts list /abs/path/capture.har`.
    Check that a page entry exists and has a body. Several versions means several loads; pick with `--version`.
 3. **Extract into the current project's `tmp/`** (it survives reboots; the scratchpad doesn't):
