@@ -13,7 +13,7 @@ Read it first: it holds the last reviewed `seq`, the items carried forward, and 
 round's findings. Update it at the end of every sweep. Without it you re-read 1,300 messages.
 
 **What the bookmark does NOT hold is the running order.** That lives on the issues, as GitHub
-milestones (`gh api repos/kiliman/nutwords/milestones`), and each milestone's _description_
+milestones (`gh api repos/3votech/nutwords/milestones`), and each milestone's _description_
 carries why its issues are batched together — the expensive part to re-derive. A new finding
 gets filed as an issue and put in a milestone; it does not get an ordering written into this
 file, or the two copies will drift.
