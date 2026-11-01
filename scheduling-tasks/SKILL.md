@@ -146,6 +146,7 @@ A task with `retries: N` gets N extra attempts inside the same execution when a 
 - Use it for idempotent tasks that touch the network (lights, polling, syncs). Don't use it for actions with side effects that must not repeat (sending a message, posting, charging).
 - Keep `timeoutMs × (retries + 1)` plus the waits well under the task's cadence: a `*/5` lights task with a 15s timeout and 3 retries takes at most ~2 min.
 - Add to an existing task: `anima scheduler update_task --taskId <id> --retries 3 --retryDelaySeconds 10`.
+- `alertAfterFailures: N` (default 1) waits for N failed runs in a row before the "Task failed" text, and then only sends "recovered" for a streak that was alerted. Use 2 for frequent, flaky tasks (the `*/5` lights tasks): one bad run stays quiet, ten minutes of failure does not.
 
 ## CLI Usage
 
@@ -168,23 +169,24 @@ bun run packages/cli/src/index.ts <method> [--param value]
 
 ### `scheduler.add_task`
 
-| Param               | Type     | Required                        | Description                                  |
-| ------------------- | -------- | ------------------------------- | -------------------------------------------- |
-| `name`              | string   | Yes                             | Human-readable task name                     |
-| `description`       | string   | No                              | Optional description                         |
-| `type`              | string   | No (default: `once`)            | `once`, `interval`, `cron`                   |
-| `delaySeconds`      | number   | One of these required           | Seconds from now to fire                     |
-| `fireAt`            | string   |                                 | Absolute ISO timestamp                       |
-| `cronExpr`          | string   | For cron type                   | Cron expression                              |
-| `intervalSeconds`   | number   | For interval type               | Repeat interval                              |
-| `action`            | object   | Yes                             | What to do when task fires                   |
-| `missedPolicy`      | string   | No (default: `fire_once`)       | Missed task behavior                         |
-| `concurrency`       | string   | No (default: `skip_if_running`) | Concurrency behavior                         |
-| `tags`              | string[] | No                              | Tags for grouping                            |
-| `keepHistory`       | number   | No (default: 50)                | Executions to retain                         |
-| `outputDir`         | string   | No                              | Output dir pattern for `{{task.output_dir}}` |
-| `retries`           | number   | No (default: 0)                 | Extra attempts before a run counts as failed |
-| `retryDelaySeconds` | number   | No (default: 10)                | First retry wait; doubles each retry         |
+| Param                | Type     | Required                        | Description                                  |
+| -------------------- | -------- | ------------------------------- | -------------------------------------------- |
+| `name`               | string   | Yes                             | Human-readable task name                     |
+| `description`        | string   | No                              | Optional description                         |
+| `type`               | string   | No (default: `once`)            | `once`, `interval`, `cron`                   |
+| `delaySeconds`       | number   | One of these required           | Seconds from now to fire                     |
+| `fireAt`             | string   |                                 | Absolute ISO timestamp                       |
+| `cronExpr`           | string   | For cron type                   | Cron expression                              |
+| `intervalSeconds`    | number   | For interval type               | Repeat interval                              |
+| `action`             | object   | Yes                             | What to do when task fires                   |
+| `missedPolicy`       | string   | No (default: `fire_once`)       | Missed task behavior                         |
+| `concurrency`        | string   | No (default: `skip_if_running`) | Concurrency behavior                         |
+| `tags`               | string[] | No                              | Tags for grouping                            |
+| `keepHistory`        | number   | No (default: 50)                | Executions to retain                         |
+| `outputDir`          | string   | No                              | Output dir pattern for `{{task.output_dir}}` |
+| `retries`            | number   | No (default: 0)                 | Extra attempts before a run counts as failed |
+| `retryDelaySeconds`  | number   | No (default: 10)                | First retry wait; doubles each retry         |
+| `alertAfterFailures` | number   | No (default: 1)                 | Failed runs in a row before notifying        |
 
 ### `scheduler.update_task`
 
