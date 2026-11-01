@@ -1,0 +1,42 @@
+{
+  "id": "deleting-local-branches",
+  "description": "Delete local git branches safely without tripping dcg: merged-PR cleanup (cleanup-local-branches) and my own non-PR branches (reviews, scratch, finished deps branches), each checked so no unpushed work is lost.",
+  "commands": {
+    "delete": {
+      "script": "scripts/delete.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Delete named local branches (or every branch with a --prefix) when nothing would be lost: never the default/current/worktree branch, and only when every commit is reachable from another ref or the branch's PR was merged. --dry-run reports, --force skips the commit check. Logs each SHA with a restore command.",
+      "args": [
+        {
+          "name": "--repo",
+          "type": "string",
+          "required": true,
+          "description": "Absolute path of the repository"
+        },
+        {
+          "name": "branch",
+          "type": "string",
+          "required": false,
+          "description": "Branch names to delete (repeatable); or use --prefix <p>"
+        }
+      ],
+      "timeoutMs": 120000
+    },
+    "merged": {
+      "script": "scripts/merged.sh",
+      "runtime": "bash",
+      "longRunning": false,
+      "description": "Run cleanup-local-branches in a repo: deletes local branches whose PR merged, skips open/draft/closed-unmerged PRs (--yes deletes closed-unmerged too). Flags pass through (--dry-run, --yes, --no-pr, --open-pr, --archive, --merged).",
+      "args": [
+        {
+          "name": "repo",
+          "type": "absolute-folder",
+          "required": true,
+          "description": "Absolute path of the repository"
+        }
+      ],
+      "timeoutMs": 300000
+    }
+  }
+}
