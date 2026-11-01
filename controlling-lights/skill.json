@@ -44,7 +44,7 @@
         }
       ],
       "env": ["GOVEE_API_KEY"],
-      "timeoutMs": 30000
+      "timeoutMs": 60000
     }
   }
 }
