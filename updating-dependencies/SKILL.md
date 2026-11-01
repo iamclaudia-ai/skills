@@ -1,6 +1,6 @@
 ---
 name: updating-dependencies
-description: "MUST be used for the weekly dependency sweep, and whenever a session is started to update a repo's dependencies from a sweep report. Discovers Michael's active personal repos (never beehiiv work repos), scans each lockfile on the remote default branch for advisories and outdated packages, and opens PRs: one batch PR of security fixes and safe (patch/minor) updates first, then one PR per breaking upgrade group, each stacked on the batch with gh-stack. Closing a breaking PR unmerged defers it. Triggers on: weekly dependency sweep, deps sweep, dependency sweep report, update dependencies weekly, scheduled dependency updates, dependency PRs, breaking upgrade PR, major version upgrade, safe updates batch, renovate, dependabot alternative, defer an upgrade, refresh dependency PR, stacked dependency PRs, sweep all repos."
+description: "MUST be used for the weekly dependency sweep, and whenever a session is started to update a repo's dependencies from a sweep report. Discovers Michael's active personal repos (never beehiiv work repos), scans each lockfile on the remote default branch for advisories and outdated packages, and opens PRs: one batch PR of security fixes and safe (patch/minor) updates first, then one PR per breaking upgrade group, each stacked on the batch with gh-stack. Closing a breaking PR unmerged defers it. Triggers on: weekly dependency sweep, deps sweep, dependency sweep report, update dependencies weekly, scheduled dependency updates, dependency PRs, breaking upgrade PR, major version upgrade, safe updates batch, renovate, dependabot alternative, defer an upgrade, refresh dependency PR, stacked dependency PRs, sweep all repos, merge the dependency PRs, land the sweep, merge deps PRs."
 ---
 
 # Updating Dependencies
@@ -15,6 +15,7 @@ Michael to review. Security triage techniques live in the
 - You were started by the sweep with a report path (the usual case)
 - Michael asks to run the sweep, or to sweep one repo now
 - Refreshing or rebasing an open `deps/*` PR
+- Merging (landing) a sweep's stacked PRs (step 6)
 
 ## Available Commands
 
@@ -53,14 +54,16 @@ explain it in the PR body. Follow the repo's own CLAUDE.md conventions.
 ### Rules that never bend
 
 - **Never touch the main working copy.** It may hold Michael's uncommitted
-  work. Work only in a worktree. The one exception is step 5's `gh-stack add`,
-  which writes stack metadata under `.git/` and checks nothing out.
+  work. Work only in a worktree. The exceptions are step 5's `gh-stack add` and
+  step 6's `gh-stack delete --keep-branch` cleanup, which only write stack
+  metadata under `.git/` and check nothing out.
 - **Stack the PRs with `gh-stack`** (load `using-gh-stack`). The safe batch is
   the bottom of the stack, and each breaking PR is a child of it. The repos
   squash merge, so a branch built on a merged PR has to be moved with
   `gh-stack sync`. A plain `git rebase origin/<default>` replays the merged
   PR's original commits, and they conflict with their own squashed copy
-  (evolution-mobile #172, 2026-10-25).
+  (evolution-mobile #172, 2026-10-25). Landing siblings has its own order
+  (step 6).
 - **Never push to the default branch, and never force-push by hand.** The
   only force-pushes allowed are the `--force-with-lease` pushes that `gh-stack
   submit`/`sync` make to this sweep's own `deps/*` branches. Never merge the
@@ -169,14 +172,78 @@ versions. Verify, and note the refresh in a PR comment.
   replays its squashed commits. If you see one, say so in the final message:
   the fix is `gh-stack update-prs` run from a branch of that stack, which you
   must not check out in his working copy.
-- **How to land it**, for the final message: squash merge the safe batch
-  first (on GitHub, or `gh-stack merge --base` from the safe branch), then run
-  `gh-stack sync` in his checkout. Sync sees the merge and moves the breaking
-  branches onto the default branch, so each can merge in turn. Never a plain
-  `git rebase` (see *Rules that never bend*).
+- **How to land it**, for the final message: one line saying the PRs land one
+  at a time, safe batch first, and that you can do it when he asks (step 6).
+  Don't tell him "merge the batch, then `gh-stack sync`": with two or more
+  breaking siblings that trips kiliman/gh-stack#60.
 - Final message: one short list of PR links (safe batch first), what was held
   back or deferred, and anything Michael needs to decide. Michael reads this in
   the session, so make it the summary he'd want with his coffee.
+
+### 6. Landing the stack (when Michael asks you to merge)
+
+The breaking PRs are siblings. When the merged safe batch leaves the stack,
+gh-stack re-parents every sibling onto the default branch, and the stack ends
+up with several roots. After that every command refuses it ("exactly one root
+branch; found 3"), including `delete`, while `doctor` reports it healthy
+(kiliman/gh-stack#60, still open in v0.19.6). Until #60 is fixed, land in this
+order, which worked for nutwords #160 to #163 on 2026-11-01:
+
+1. **Check before merging.** `gh pr view <n> --json mergeable,mergeStateStatus`
+   for each PR, then `git log --stat <old base>..origin/<default>` to see what
+   landed since the sweep. If any of it touches a breaking PR's area (a build
+   plugin beside a bundler-plugin upgrade, say), that PR gets a targeted check
+   at step 5.
+2. **Squash merge the safe batch** with an explicit subject:
+   `gh pr merge <n> --squash --subject "<title> (#<n>)"`. gh-stack appends
+   `(1/4)` to PR titles, and GitHub uses the title as the squash subject
+   unless you override it.
+3. **Move the siblings onto the merge, once.** In a fresh worktree, track the
+   batch and every sibling (`gh-stack add`), then run `gh-stack sync
+   --no-push`. The batch's commits drop out ("patch contents already
+   upstream") and the siblings rebase onto it. The stack is still valid,
+   because the batch is still its single root.
+4. **Split into one stack per sibling.** Never `gh-stack delete <batch>`
+   while it has two or more children: that is the #60 trigger.
+   - Unset `branch.<b>.ghstack-{stack,parent,id,pr}` for the batch and the
+     siblings. These keys live in the shared `.git/config`.
+   - `git worktree remove` the worktree. Its `.gh-stack` store goes with it,
+     and dcg blocks `rm -rf` or `mv` inside `.git`.
+   - Add a fresh worktree. On each sibling, run `gh-stack init --parent
+     <default>`. Ancestry pulls the batch branch back in, so each stack is
+     batch + one sibling.
+   - In each stack, run `gh-stack delete <batch> --keep-branch`. With a
+     single child left, the re-parent is valid.
+5. **Land each sibling in turn**, advisory fixers first:
+   1. Check out the sibling and run `bun install --frozen-lockfile`. A
+      text-merged lockfile that no longer matches the manifests fails here.
+   2. Run the full verify (step 2.4), plus the step-1 targeted check.
+   3. `gh-stack submit --dry-run` must say **push 1, create 0**. A fresh
+      worktree can record `pr: null`, and then `submit` opens duplicate PRs;
+      `gh-stack update-prs` adopts the real ones.
+   4. `gh-stack submit` pushes with `--force-with-lease` and retargets the PR
+      to the default branch.
+   5. Merge it with the explicit subject from step 2.
+   6. On the next sibling, run `gh-stack sync --no-push` before checking out
+      anything else.
+6. **Expect a lockfile conflict from the second sibling on.**
+   1. `git checkout --ours bun.lock` (during a rebase, *ours* is the new base)
+      and `bun install` to re-resolve this PR's manifest changes on top.
+   2. Diff the result against the branch's pre-rebase lockfile. Only packages
+      from the siblings that already merged may differ. Trace any other
+      changed line before trusting the lockfile.
+   3. `git add bun.lock`, `GIT_EDITOR=true git rebase --continue`, then
+      `gh-stack restack --resume --no-push`.
+7. **Clean up.**
+   - Remove the worktree.
+   - In Michael's checkout, drop the stack registered at step 5 with
+     `gh-stack delete --keep-branch`, leaves before the batch. This is
+     metadata only.
+   - Delete the local `deps/*` branches with the `deleting-local-branches`
+     skill, and their remote branches with `git push origin --delete` (merged
+     PRs only).
+   - Tell him what is now merged but not deployed (the repo's own deploy
+     check, e.g. `git log origin/release..origin/main` in nutwords).
 
 ## Ecosystem notes
 
