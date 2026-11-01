@@ -109,22 +109,25 @@ function saveState(state: PlaylistState): void {
 // request gets its own timeout, and transient failures are retried with
 // backoff until DEADLINE_MS, so a blip doesn't fail the run but a light that
 // stays unreachable still does. The scheduler retries the whole run on top.
-const REQUEST_TIMEOUT_MS = 8_000;
-const DEADLINE_MS = 40_000;
+const REQUEST_TIMEOUT_MS = 10_000;
+// Govee's device list is slow (20–30s at times), so it gets longer, and the
+// resolved device is cached in the state file so normal runs never ask.
+const DEVICE_LIST_TIMEOUT_MS = 30_000;
+const DEADLINE_MS = 45_000;
 const RETRY_DELAYS_MS = [2_000, 4_000, 8_000];
 const startedAt = Date.now();
 
 /** A failure worth retrying: network error, timeout, rate limit, 5xx, light offline. */
 class TransientError extends Error {}
 
-async function api<T>(path: string, body?: unknown): Promise<T> {
+async function api<T>(path: string, body?: unknown, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       method: body === undefined ? "GET" : "POST",
       headers: { "Govee-API-Key": API_KEY!, "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     throw new TransientError(err instanceof Error ? err.message : String(err));
@@ -150,7 +153,11 @@ async function withRetries<T>(label: string, fn: () => Promise<T>): Promise<T> {
 // ── Device resolution ────────────────────────────────
 
 async function getDevices(): Promise<GoveeDevice[]> {
-  const result = await api<{ data: GoveeDevice[] }>("/user/devices");
+  const result = await api<{ data: GoveeDevice[] }>(
+    "/user/devices",
+    undefined,
+    DEVICE_LIST_TIMEOUT_MS,
+  );
   return result.data.filter((d) => d.type === "devices.types.light");
 }
 
@@ -217,7 +224,10 @@ const state = loadState();
 const nextIndex = (state.lastIndex + 1) % playlist.scenes.length;
 const scene = playlist.scenes[nextIndex];
 
-const device = await resolveDevice(state);
+const device = await resolveDevice(state).catch((err: unknown) => {
+  console.error(`✗ Could not find the light: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+});
 
 async function setScene(): Promise<void> {
   const result = await api<{ code: number; msg: string }>("/device/control", {
