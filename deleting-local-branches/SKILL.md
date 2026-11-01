@@ -44,8 +44,10 @@ A branch is deleted only when nothing would be lost:
 1. It is **not** the default branch, the current branch, or checked out in any
    worktree. Nothing overrides this.
 2. Every commit on it is **reachable from another ref** (its pushed remote, another
-   local branch, a tag), **or** its PR was **merged**. Squash merges leave the
-   original commits unreachable, but their content is on the default branch.
+   local branch, a tag), **or** every commit has an **identical patch on the
+   default branch** (`git cherry` marks it `-`: rebased or cherry-picked in),
+   **or** its PR was **merged**. Squash merges leave the original commits
+   unreachable, but their content is on the default branch.
 3. Otherwise it is skipped with the count of commits that exist only there and the
    PR state. `--force` deletes it anyway: use it only for work I know is
    throwaway, since those commits survive only in the reflog (about 90 days).

@@ -7,8 +7,10 @@
  * A branch is deleted only when nothing would be lost:
  *   - it is not the default branch, the current branch, or checked out in a worktree
  *   - every commit on it is reachable from another ref (a remote branch, another
- *     local branch, a tag), or its PR was merged (squash merges leave the original
- *     commits unreachable, but their content is on the default branch)
+ *     local branch, a tag), or each of its commits has an identical patch on the
+ *     default branch (rebased or cherry-picked in), or its PR was merged (squash
+ *     merges leave the original commits unreachable, but their content is on the
+ *     default branch)
  * --force skips the commit check, never the branch checks.
  *
  * Every deletion is logged with its SHA, and the restore command is printed.
@@ -126,6 +128,18 @@ function uniqueCommitCount(repo: string, branch: string): number {
   return Number(proc.stdout.toString().trim());
 }
 
+/**
+ * True when every commit on `branch` that `trunk` lacks has an identical patch on
+ * `trunk` (`git cherry` marks it "-"): the branch was rebased or cherry-picked in,
+ * so its commits are unreachable but nothing in them is missing.
+ */
+function patchesUpstream(repo: string, trunk: string, branch: string): boolean {
+  const cherry = git(repo, ["cherry", `refs/heads/${trunk}`, `refs/heads/${branch}`]);
+  if (!cherry.ok) return false;
+  const lines = cherry.out.split("\n").filter(Boolean);
+  return lines.length > 0 && lines.every((line) => line.startsWith("- "));
+}
+
 interface PrInfo {
   number: number;
   state: string;
@@ -200,7 +214,9 @@ function main(): void {
     const sha = git(repo, ["rev-parse", `refs/heads/${branch}`]).out;
     const unique = uniqueCommitCount(repo, branch);
     let reason = unique === 0 ? "all commits reachable elsewhere" : "";
-    if (unique > 0) {
+    if (unique > 0 && patchesUpstream(repo, trunk, branch)) {
+      reason = `all ${unique} commit(s) already on ${trunk} as identical patches`;
+    } else if (unique > 0) {
       const pr = prFor(repo, branch);
       if (pr?.state === "MERGED") {
         reason = `PR #${pr.number} merged`;
