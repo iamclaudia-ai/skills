@@ -174,67 +174,53 @@ versions. Verify, and note the refresh in a PR comment.
   must not check out in his working copy.
 - **How to land it**, for the final message: one line saying the PRs land one
   at a time, safe batch first, and that you can do it when he asks (step 6).
-  Don't tell him "merge the batch, then `gh-stack sync`": with two or more
-  breaking siblings that trips kiliman/gh-stack#60.
+  If he merges on GitHub himself, `gh-stack sync` afterwards moves the
+  breaking siblings (gh-stack ≥ 0.19.7), but GitHub's squash subject keeps
+  the `(N/M)` that gh-stack adds to PR titles unless he edits it.
 - Final message: one short list of PR links (safe batch first), what was held
   back or deferred, and anything Michael needs to decide. Michael reads this in
   the session, so make it the summary he'd want with his coffee.
 
 ### 6. Landing the stack (when Michael asks you to merge)
 
-The breaking PRs are siblings. When the merged safe batch leaves the stack,
-gh-stack re-parents every sibling onto the default branch, and the stack ends
-up with several roots. After that every command refuses it ("exactly one root
-branch; found 3"), including `delete`, while `doctor` reports it healthy
-(kiliman/gh-stack#60, still open in v0.19.6). Until #60 is fixed, land in this
-order, which worked for nutwords #160 to #163 on 2026-11-01:
+Needs gh-stack ≥ 0.19.8 (`gh-stack --version`). Since 0.19.7, a merged batch
+with several breaking siblings gets every sibling re-rooted onto the default
+branch, each as its own stack (kiliman/gh-stack#60). Since 0.19.8, gh-stack's
+squash commits leave out the `(N/M)` it adds to PR titles (#62). On an older
+version, stop and say so rather than landing by hand.
 
 1. **Check before merging.** `gh pr view <n> --json mergeable,mergeStateStatus`
    for each PR, then `git log --stat <old base>..origin/<default>` to see what
    landed since the sweep. If any of it touches a breaking PR's area (a build
    plugin beside a bundler-plugin upgrade, say), that PR gets a targeted check
-   at step 5.
-2. **Squash merge the safe batch** with an explicit subject:
-   `gh pr merge <n> --squash --subject "<title> (#<n>)"`. gh-stack appends
-   `(1/4)` to PR titles, and GitHub uses the title as the squash subject
-   unless you override it.
-3. **Move the siblings onto the merge, once.** In a fresh worktree, track the
-   batch and every sibling (`gh-stack add`), then run `gh-stack sync
-   --no-push`. The batch's commits drop out ("patch contents already
-   upstream") and the siblings rebase onto it. The stack is still valid,
-   because the batch is still its single root.
-4. **Split into one stack per sibling.** Never `gh-stack delete <batch>`
-   while it has two or more children: that is the #60 trigger.
-   - Unset `branch.<b>.ghstack-{stack,parent,id,pr}` for the batch and the
-     siblings. These keys live in the shared `.git/config`.
-   - `git worktree remove` the worktree. Its `.gh-stack` store goes with it,
-     and dcg blocks `rm -rf` or `mv` inside `.git`.
-   - Add a fresh worktree. On each sibling, run `gh-stack init --parent
-     <default>`. Ancestry pulls the batch branch back in, so each stack is
-     batch + one sibling.
-   - In each stack, run `gh-stack delete <batch> --keep-branch`. With a
-     single child left, the re-parent is valid.
-5. **Land each sibling in turn**, advisory fixers first:
-   1. Check out the sibling and run `bun install --frozen-lockfile`. A
-      text-merged lockfile that no longer matches the manifests fails here.
+   at step 4.
+2. **Work in a fresh worktree**, never Michael's checkout: `git -C <repo>
+   worktree add <repo>.worktrees/land-<date> <safe branch>`, then `gh-stack
+   add <b>` for each breaking branch. `gh-stack stacks --json` must show every
+   PR number; `gh-stack update-prs` adopts any `"pr": null`. A stack an older
+   gh-stack already wedged ("exactly one root branch; found N") is repaired by
+   `gh-stack doctor`, which splits it.
+3. **Land the safe batch.** On the safe branch, `gh-stack merge --base`. It
+   squash-merges the batch, re-roots every breaking sibling onto the default
+   branch (pushing each and retargeting its PR), and leaves one stack per
+   sibling. If a re-root stops on a conflict: resolve, `git rebase
+   --continue`, and re-run `gh-stack merge --base` (not `restack`).
+4. **Land each sibling in turn**, advisory fixers first:
+   1. Check out the sibling and run `gh-stack sync`, which moves it onto
+      whatever merged before it (a no-op for the first). Then `bun install
+      --frozen-lockfile`. A text-merged lockfile that no longer matches the
+      manifests fails here.
    2. Run the full verify (step 2.4), plus the step-1 targeted check.
-   3. `gh-stack submit --dry-run` must say **push 1, create 0**. A fresh
-      worktree can record `pr: null`, and then `submit` opens duplicate PRs;
-      `gh-stack update-prs` adopts the real ones.
-   4. `gh-stack submit` pushes with `--force-with-lease` and retargets the PR
-      to the default branch.
-   5. Merge it with the explicit subject from step 2.
-   6. On the next sibling, run `gh-stack sync --no-push` before checking out
-      anything else.
-6. **Expect a lockfile conflict from the second sibling on.**
+   3. `gh-stack merge --base`.
+5. **Expect a lockfile conflict in `sync` from the second sibling on.**
    1. `git checkout --ours bun.lock` (during a rebase, *ours* is the new base)
       and `bun install` to re-resolve this PR's manifest changes on top.
    2. Diff the result against the branch's pre-rebase lockfile. Only packages
       from the siblings that already merged may differ. Trace any other
       changed line before trusting the lockfile.
    3. `git add bun.lock`, `GIT_EDITOR=true git rebase --continue`, then
-      `gh-stack restack --resume --no-push`.
-7. **Clean up.**
+      `gh-stack restack --resume`.
+6. **Clean up.**
    - Remove the worktree.
    - In Michael's checkout, drop the stack registered at step 5 with
      `gh-stack delete --keep-branch`, leaves before the batch. This is
