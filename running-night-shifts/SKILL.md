@@ -48,6 +48,10 @@ lin gql 'query{ issues(first:100, filter:{
   log. Sibling tickets filed in the same QA wave are often one bug reported twice (same pub, same Loom). The
   PR closed only the ticket it named. Verify against prod (read replica, see below) before calling it fixed.
 - **Whose is it?** Assigned to a teammate means skip it. Unassigned means ask him up front.
+- **Already has someone else's PR?** Check each ticket's attachments. A ticket assigned to Michael whose open
+  PR is by `RubyBrewsday` (Poage's software factory, an agent clearing cooldown tickets on `michaelpoage/...`
+  branches) is not ours: don't review or rebuild it. Reassign it with `lin update <ID> -a michael.poage`
+  (RubyBrewsday has no Linear user). Michael, Nov 1: "if they're already open, let's not even worry about those."
 - **Is it a bug?** Tickets we filed ourselves, features, and research wait unless they are bugs in production.
   Michael, Nov 1: "I don't think we need to work on those as long as they're not actual bugs in production."
   A project's plan file may hold a stricter ordering rule; follow it.
