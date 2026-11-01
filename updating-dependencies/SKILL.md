@@ -161,7 +161,14 @@ versions. Verify, and note the refresh in a PR comment.
   for each breaking branch, or for the safe branch alone if it has no
   children. It finds the parents from the branches' ancestry, writes only
   metadata, and does not change his current branch or working tree. Confirm
-  with `gh-stack stacks --json`.
+  with `gh-stack stacks --json` that **every branch shows its PR number**.
+  Stack files are per worktree, so the PRs reach his checkout through the
+  `ghstack-pr` git config the worktree's `submit` wrote, which `add` reads
+  (gh-stack ≥ 0.19.6). A `"pr": null` there breaks the landing: `merge --base`
+  refuses with "has no PR", and `sync` can't see the safe batch merge, so it
+  replays its squashed commits. If you see one, say so in the final message:
+  the fix is `gh-stack update-prs` run from a branch of that stack, which you
+  must not check out in his working copy.
 - **How to land it**, for the final message: squash merge the safe batch
   first (on GitHub, or `gh-stack merge --base` from the safe branch), then run
   `gh-stack sync` in his checkout. Sync sees the merge and moves the breaking
