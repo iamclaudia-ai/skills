@@ -43,7 +43,7 @@ Xcode 27's `devicectl` does everything except touch.
 D=00008120-0006452E3CE20032   # the iPad
 xcrun devicectl device install app --device $D path/to/App.app
 xcrun devicectl device process launch --terminate-existing --device $D com.example.app
-xcrun devicectl device process launch --terminate-existing --device $D com.example.app -someKey value   # launch args
+xcrun devicectl device process launch --terminate-existing --device $D com.example.app -- -someKey value   # launch args AFTER `--`
 timeout 20 xcrun devicectl device process launch --console --terminate-existing --device $D com.example.app > ./tmp/console.log 2>&1   # stdout/stderr + NSLog
 xcrun devicectl device info processes --device $D | grep -c MyApp.app     # still alive?
 xcrun devicectl device capture screenshot --device $D --destination ./tmp/shots/x.png
@@ -51,6 +51,8 @@ xcrun devicectl device orientation get --device $D
 xcrun devicectl device orientation set --device $D landscapeLeft   # portrait, portraitUpsideDown, landscapeLeft, landscapeRight
 ```
 
+- **Put the app's arguments after `--`.** Without it devicectl parses them as its own flags:
+  `-harnessCollect 1` failed with "Missing value for '-l <path>'".
 - **Launch arguments land in NSUserDefaults** (`-key value`). React Native reads them with
   `Settings.get('key')` (iOS only). That is how an app opens a screen without a tap: the
   claudia-scan harness takes `-harnessOpen scan|batch|room|text -harnessCollect 1`.
