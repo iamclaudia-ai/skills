@@ -1,6 +1,6 @@
 {
   "id": "deleting-docker-resources",
-  "description": "Delete the Docker containers, images, volumes and networks I create for testing without tripping dcg: labelled ones (claudia.scratch=true) freely, unlabelled leftovers by name or prefix, never compose stacks, running containers or images still in use.",
+  "description": "Delete the Docker containers, images, volumes and networks I create for testing, after checking each is mine and unused: labelled ones (claudia.scratch=true) freely, unlabelled leftovers by name or prefix, never compose stacks, running containers or images still in use.",
   "commands": {
     "delete": {
       "script": "scripts/delete.ts",

@@ -1,14 +1,27 @@
 ---
 name: deleting-docker-resources
-description: "MUST be used whenever you need to delete, clean up, or prune Docker containers, images, volumes or networks, because dcg blocks `docker rm`, `docker rmi` and `docker run --rm`. Also MUST be used BEFORE creating any Docker image, container, volume or network for testing (docker build, docker run, docker create), to label it so it can be cleaned up later. Deletes what I created (labelled claudia.scratch=true) freely, and unlabelled leftovers by name or prefix, never compose stacks, running containers I didn't start, images still in use, or pulled base images. Triggers on: delete docker container, remove container, docker rm blocked, docker rmi, remove docker image, clean up docker, docker cleanup, prune docker, docker prune, stopped containers, leftover containers, test containers, scratch images, dangling images, free disk space docker, docker build for testing, docker run --rm blocked, rebuild in docker, reproduce a build in docker, dcg blocked docker."
+description: "MUST be used whenever you need to delete, clean up, or prune Docker containers, images, volumes or networks: the script checks ownership and in-use state before deleting, and dcg's loose `docker rm -f` regex can't misfire on it. Also MUST be used BEFORE creating any Docker image, container, volume or network for testing (docker build, docker run, docker create), to label it so it can be cleaned up later. Deletes what I created (labelled claudia.scratch=true) freely, and unlabelled leftovers by name or prefix, never compose stacks, running containers I didn't start, images still in use, or pulled base images. Triggers on: delete docker container, remove container, docker rm blocked, docker rmi, remove docker image, clean up docker, docker cleanup, prune docker, docker prune, stopped containers, leftover containers, test containers, scratch images, dangling images, free disk space docker, docker build for testing, docker run --rm blocked, rebuild in docker, reproduce a build in docker, dcg blocked docker."
 ---
 
 # Deleting Docker Resources
 
-dcg blocks `docker rm`, `docker rmi`/`docker image rm` and even `docker run --rm`,
-so every test container I run stays behind. This skill does the deleting inside a
-script that runs its own safety checks first, so I can clean up after myself
-without asking Michael each time.
+Test containers and images pile up fast (one night's rebuilds left 13 GB). This
+skill deletes them inside a script that checks first whether each one is really
+mine and unused, so I can clean up after myself without asking Michael each time.
+
+**What dcg actually blocks** (traced 1 Nov 2026): plain `docker rm`, `docker rmi`
+and `docker run --rm` are allowed. Only force-removes are denied, by the rule
+`containers.docker:rm-force`, regex `docker\b.*?\brm\s+.*(?:-[a-zA-Z0-9]*f|--force)`.
+That regex is loose: its `\brm` also matches the `rm` in `--rm`, and
+`-[a-zA-Z0-9]*f` matches any later hyphenated word containing an "f". So
+`docker run --rm … nutwords-bf:x` and `docker rm my-staff` were denied too.
+`~/.config/dcg/config.toml` now allows `docker\s+run\s+--rm\b`. The override is
+checked per command segment, so a real `docker rm -f` chained after it still
+blocks. A `docker rm <name>` whose name contains `-…f` still trips the rule. Use
+this skill for those, or `dcg explain "<cmd>"` to check first.
+
+For a one-shot container, `docker run --rm --label claudia.scratch=true …` is
+best: it cleans itself up.
 
 This machine also runs Michael's long-lived stacks (beehiiv's ClickHouse, PeerDB,
 Temporal, docker-swarm, Evolution). The rules below exist to keep those out of reach.

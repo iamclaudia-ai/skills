@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Delete Docker containers, images, volumes and networks I created for testing,
- * with the safety checks that dcg's blanket block on `docker rm` stands in for.
+ * after checking that each one is mine and unused (dcg only stops `docker rm -f`).
  *
  * What I create carries the label `claudia.scratch=true` (`docker build --label`,
  * `docker run --label`; containers inherit their image's labels). Older leftovers
