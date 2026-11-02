@@ -1,0 +1,18 @@
+{
+  "id": "moving-projects",
+  "description": "Move a project checkout to a new folder with everything attached to it: worktrees, the Anima workspace and its sessions, transcripts, auto memory, Claude Code settings, task scripts, scheduler actions, and a heads-up to open sessions.",
+  "commands": {
+    "move": {
+      "script": "scripts/move.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Move --from <abs> to --to <abs>: worktrees go to <to>.worktrees/<branch>, broken leftovers to the Trash, the workspace follows (optionally renamed with --name), old-path mentions are rewritten where they are live config and reported elsewhere, open sessions are notified. --dry-run prints the plan and changes nothing. Refuses while a session in the folders is mid-turn.",
+      "args": [
+        { "name": "--from", "type": "string", "required": true, "description": "Absolute path of the checkout to move" },
+        { "name": "--to", "type": "string", "required": true, "description": "Absolute path it moves to (must not exist; its parent must)" },
+        { "name": "--name", "type": "string", "required": false, "description": "New name for the Anima workspace" }
+      ],
+      "timeoutMs": 300000
+    }
+  }
+}
