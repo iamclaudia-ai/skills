@@ -248,6 +248,15 @@ const taskActions = tasks.filter((t) => mentions(JSON.stringify(t.action), mappi
 const claudeJson = join(HOME, ".claude.json");
 const claudeConfig = JSON.parse(readFileSync(claudeJson, "utf8")) as { projects?: Record<string, unknown> };
 const claudeKeys = Object.keys(claudeConfig.projects ?? {}).filter((k) => folders.includes(k));
+// The Railway CLI links a folder to a project/service by its absolute path. A stale key makes
+// `railway status` in the moved folder say "No linked project found".
+const railwayJson = join(HOME, ".railway", "config.json");
+type RailwayConfig = { projects?: Record<string, { projectPath?: string }> };
+const railwayKeys = existsSync(railwayJson)
+  ? Object.keys((JSON.parse(readFileSync(railwayJson, "utf8")) as RailwayConfig).projects ?? {}).filter((k) =>
+      folders.includes(k),
+    )
+  : [];
 
 const reportRoots = [
   join(HOME, ".anima", "anima.json"),
@@ -284,6 +293,7 @@ say(`auto memory notes to update: ${memoryFiles.length}`);
 for (const p of taskFiles) say(`task file to update: ${p}`);
 for (const t of taskActions) say(`scheduler task to update: ${t.name} (${t.id})`);
 for (const k of claudeKeys) say(`~/.claude.json project entry to re-key: ${k}`);
+for (const k of railwayKeys) say(`Railway CLI link to re-key: ${k}`);
 const openSessions = sessions.filter((s) => !["resolved", "archived"].includes(s.disposition));
 say(`open sessions to notify: ${opts.notify ? openSessions.length : "skipped (--no-notify)"}`);
 for (const p of reportOnly) say(`mentions the old path (review by hand): ${p}`);
@@ -384,6 +394,22 @@ if (claudeKeys.length > 0) {
   const temp = `${claudeJson}.move-${process.pid}`;
   writeFileSync(temp, `${JSON.stringify(fresh, null, 2)}\n`);
   renameSync(temp, claudeJson);
+}
+
+step("Railway CLI link (~/.railway/config.json)");
+if (railwayKeys.length > 0) {
+  const fresh = JSON.parse(readFileSync(railwayJson, "utf8")) as Required<RailwayConfig>;
+  for (const key of railwayKeys) {
+    const target = rewrite(key, mappings);
+    fresh.projects[target] = { ...fresh.projects[key], projectPath: target };
+    delete fresh.projects[key];
+    say(`${key} → ${target}`);
+  }
+  const temp = `${railwayJson}.move-${process.pid}`;
+  writeFileSync(temp, `${JSON.stringify(fresh, null, 2)}\n`);
+  renameSync(temp, railwayJson);
+} else {
+  say("none");
 }
 
 step("Rewriting the old path");

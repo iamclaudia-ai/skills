@@ -45,6 +45,7 @@ breaks all of it. This skill moves everything together, the same way every time.
 | Broken worktree leftovers | A `.git` file pointing at nothing, under `<from>.worktrees`: moved to `~/.Trash` |
 | Anima workspace | Worktrees recorded as folders, then `update_workspace --moveFolder` for each: sessions follow, the old paths stay as inactive folders, transcripts are linked at the new path (never renamed, so Libby doesn't re-ingest). `--name` renames it |
 | Claude Code | The `~/.claude.json` project entry (trust, allowed tools, MCP approvals, local MCP servers) moves to the new key |
+| Railway CLI | The `~/.railway/config.json` link (keyed by absolute path) moves to the new key, so `railway status` still finds the project |
 | Old path in text | Rewritten in the project's auto memory, `~/.anima/tasks` scripts and runbooks (not `*.log`, not dated run folders) and scheduler task actions. Only where the path ends, so `tnh` never touches `tnh-legacy` |
 | CodeGraph | Daemons stopped before, `codegraph sync` after |
 | Sessions | Idle live ones closed first (their process would keep the old path; the reconciler revives the rows). Open ones get a `user_notification` with the new paths |
