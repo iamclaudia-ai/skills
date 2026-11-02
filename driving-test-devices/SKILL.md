@@ -153,9 +153,17 @@ adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml ./tmp/ui.xm
 Michael is building a ring of devices around a **BOOX Go 10.3 Gen II** e-ink display (2480x1860,
 300 ppi, Android 15, adb) on a **USB turntable**, so a script can show any label, turn it to face
 one device, animate it (motion tests), and replay real proof images as regression targets.
-A motorized tablet holder for physical rotation is on the wish list. Plan for the BOOX:
-auto-rotate off, adb over Tailscale, never sleep while charging, full refresh between images,
-labels rendered at true scale (3 in = 900 px). Record the setup here once it exists.
+Plan for the BOOX: auto-rotate off (its G-sensor would flip the label), adb over Tailscale,
+never sleep while charging, full refresh between images, labels rendered at true scale
+(3 in = 900 px). Record the setup here once it exists.
+
+**Rotation is done in software, no servo (decided 2026-11-01).** Turn the device's interface
+(`wda.py rotate`, `devicectl orientation set`, adb `user_rotation`) and render the e-ink pattern
+turned to match. claudia-scan follows the interface rather than gravity, so to the camera and
+the scanner this is the same as a person turning the tablet in front of a level label. It
+covers rotation mid-scan, rotation lock (portrait UI, sideways pattern) and upside down, on
+demand. A physical turn was checked once by hand on the iPad (room mode read "105"); the only
+thing software can't show is iPadOS's own response to the accelerometer.
 
 ## Per-project notes
 
