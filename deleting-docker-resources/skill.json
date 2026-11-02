@@ -1,0 +1,21 @@
+{
+  "id": "deleting-docker-resources",
+  "description": "Delete the Docker containers, images, volumes and networks I create for testing without tripping dcg: labelled ones (claudia.scratch=true) freely, unlabelled leftovers by name or prefix, never compose stacks, running containers or images still in use.",
+  "commands": {
+    "delete": {
+      "script": "scripts/delete.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Delete my Docker resources: --mine (everything labelled claudia.scratch=true), --prefix <p> (container names / image repositories), or named containers and repo:tags. Skips compose projects, running containers (--stop for labelled ones), images in use, and pulled images (--pulled). --dry-run reports. Logs each deletion.",
+      "args": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": false,
+          "description": "Container names/IDs or image repo:tags (repeatable); or use --mine / --prefix <p>"
+        }
+      ],
+      "timeoutMs": 300000
+    }
+  }
+}
