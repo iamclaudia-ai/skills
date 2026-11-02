@@ -1,6 +1,6 @@
 ---
 name: handing-off-sessions
-description: "MUST be used when a session should continue in a fresh one: my context is getting full or about to auto-compact, a long task has reached a natural phase boundary, a milestone is done and the next deserves a clean start, or Michael says hand off, start a new session, continue in a new session, or pass this to a new Claudia. Writes a handoff prompt that lets the next session pick up cold (where the notes are, what's done, what's next, the hard-won facts), then runs `anima session handoff` to create, title and start the new session in one call; Michael's web chat follows to it on its own. Works in any project. Triggers on: hand off, handoff, handover, new session, fresh session, continue in a new session, start a new session with a prompt, context is full, context window, running out of context, before compaction, instead of compacting, avoid compaction, next phase, next milestone, pass the baton, successor session, carry on in another session."
+description: "MUST be used when a session should continue in a fresh one: my context is getting full or about to auto-compact, a long task has reached a natural phase boundary, a milestone is done and the next deserves a clean start, or Michael says hand off, start a new session, continue in a new session, or pass this to a new Claudia. Writes a handoff prompt that lets the next session pick up cold (where the notes are, what's done, what's next, the hard-won facts), then runs `anima session handoff` to create, title and start the new session in one call; Michael's web chat follows to it on its own. Works in any project. Triggers on: hand off, handoff, handover, new session, fresh session, continue in a new session, start a new session with a prompt, context is full, context window, running out of context, before compaction, instead of compacting, avoid compaction, next phase, next milestone, pass the baton, successor session, carry on in another session, hand off to a worktree, new branch, worktree handoff."
 ---
 
 # Handing Off Sessions
@@ -66,6 +66,26 @@ anima session handoff --title "M7: ENT-754 roles" --promptFile tmp/m7/HANDOFF.md
 
 It returns the new `sessionId` immediately (no streaming), and the new session is already working.
 
+**On a fresh branch:** when the next phase belongs on its own branch (parallel work, a risky
+change, a PR of its own), add `--worktree <branch>`:
+
+```bash
+anima session handoff --title "R2 phase 2" --promptFile tmp/r2/HANDOFF.md --worktree r2-phase2
+anima session handoff ... --worktree feat/r2-phase2 --worktreeBase origin/main
+```
+
+- Anima creates (or reuses) the branch in a worktree at `<repo>.worktrees/<branch>`, from
+  `--worktreeBase` (default: origin's default branch, freshly fetched; a new branch never tracks
+  it), and starts the new session there. The repo is my workspace's root. It can't be combined
+  with `--targetCwd`.
+- The bootstrap links the main checkout's `tmp/` into the worktree, so the HANDOFF.md and NOTES.md
+  I point at are right there, and seeds CodeGraph when the repo has an index. A project can
+  replace it with an executable `tmp/scripts/create_worktree` (see the anima CLAUDE.md).
+- Any profile but yolo gets the folder pre-trusted, so the new session doesn't stall on Claude
+  Code's trust dialog.
+- Nothing removes the worktree later: Michael does that as the work lands.
+- The same flag works on `session create_session` and `session spawn_agent`.
+
 ### 4. Then stop
 
 - End my turn with one line pointing at the new session (title and id), and do nothing else in
@@ -82,7 +102,11 @@ It returns the new `sessionId` immediately (no streaming), and the new session i
 # Context getting full mid-task
 anima session handoff --title "R2 migration: phase 2 (Fuse3)" --promptFile tmp/r2/HANDOFF.md
 
-# Next milestone in a sibling worktree
+# Next milestone on its own branch, in a new worktree
+anima session handoff --title "Docs pass" --prompt "Read tmp/docs/NOTES.md, then ..." \
+  --worktree docs-pass
+
+# Into a folder that already exists
 anima session handoff --title "Docs pass" --prompt "Read tmp/docs/NOTES.md, then ..." \
   --targetCwd ~/Projects/fuse/fuse2-docs
 ```
