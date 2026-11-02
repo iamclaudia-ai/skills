@@ -1,6 +1,6 @@
 ---
 name: using-anima-cli
-description: "Use PROACTIVELY when interacting with the Anima platform — managing extensions, memory, sessions, gateway, watchdog, or any Anima service. The anima CLI is the primary interface for all platform operations. NEVER use curl to API endpoints when the CLI is available. Triggers on: anima, memory process, restart extension, gateway, watchdog, list sessions, send prompt, handoff, hand off, new session instead of compacting, continue in a new session, context getting full, memory status, queue conversations, process conversation, ingest, health check, anima CLI, extension methods."
+description: "Use PROACTIVELY when interacting with the Anima platform — managing extensions, memory, sessions, gateway, watchdog, or any Anima service. The anima CLI is the primary interface for all platform operations. NEVER use curl to API endpoints when the CLI is available. Triggers on: anima, memory process, restart extension, gateway, watchdog, list sessions, send prompt, memory status, queue conversations, process conversation, ingest, health check, anima CLI, extension methods."
 ---
 
 # Using the Anima CLI
@@ -102,26 +102,10 @@ anima session get_info --sessionId abc-123
 anima session list_workspaces
 ```
 
-### Handing off to a new session (instead of compacting)
+### Handing off to a new session
 
-When my context is getting full on long work, or a phase is done and the next one deserves a clean
-start, I hand off myself — no need to ask Michael to open a session and paste a prompt:
-
-```bash
-# 1. Write the handoff prompt: what to read first (NOTES.md / the plan's "Start here"), what's
-#    done, what's next, and any hard-won facts the new session must not re-learn.
-# 2. Hand off. sessionId comes from $ANIMA_SESSION_ID; folder, agent, model and profile are mine.
-anima session handoff --title "M7: ENT-754 roles" --promptFile tmp/m7/HANDOFF.md
-#    (--prompt "..." works for short ones; --targetCwd / --model / --profile override)
-```
-
-- Returns the new `sessionId` right away (no streaming). The new session is already working.
-- Michael's web chat showing my session jumps to the new one by itself; a tab showing a different
-  session stays put. iOS voice mode sends its next prompt to the new one.
-- My session is marked resolved and links forward; the new one links back and its first message
-  names my session id, so it can `anima session get_history --sessionId <mine>` if it needs more.
-- A session hands off **once**. After it succeeds, finish the turn with a one-line pointer to the
-  new session and stop working here.
+`anima session handoff` starts a titled successor session instead of compacting. Load the
+**handing-off-sessions** skill for when to do it and how to write the handoff prompt.
 
 ## Notes
 

@@ -1,0 +1,101 @@
+---
+name: handing-off-sessions
+description: "MUST be used when a session should continue in a fresh one: my context is getting full or about to auto-compact, a long task has reached a natural phase boundary, a milestone is done and the next deserves a clean start, or Michael says hand off, start a new session, continue in a new session, or pass this to a new Claudia. Writes a handoff prompt that lets the next session pick up cold (where the notes are, what's done, what's next, the hard-won facts), then runs `anima session handoff` to create, title and start the new session in one call; Michael's web chat follows to it on its own. Works in any project. Triggers on: hand off, handoff, handover, new session, fresh session, continue in a new session, start a new session with a prompt, context is full, context window, running out of context, before compaction, instead of compacting, avoid compaction, next phase, next milestone, pass the baton, successor session, carry on in another session."
+---
+
+# Handing Off Sessions
+
+Long work outgrows one context window. Compaction keeps going but loses detail in ways
+I can't see. A handoff is the deliberate version: I write down exactly what the next session
+needs, start it, and stop. Michael doesn't have to open anything, paste anything or title
+anything. His chat moves to the new session by itself.
+
+## When to Use
+
+- My context is getting full (roughly past 60-70%), or a long task is about to cross into
+  auto-compaction territory.
+- A phase or milestone is done and the next one deserves a clean start (M6 shipped, M7 next).
+- Michael asks me to hand off, start fresh, or continue in a new session.
+- Not for delegating a side task while I keep working. That's a subagent
+  (`anima session spawn_agent`). A handoff *ends* my part of the work.
+
+## Instructions
+
+### 1. Get the notes current first
+
+The handoff prompt should *point at* durable notes, not replace them. Before handing off,
+update the task's `tmp/<task>/NOTES.md` (or the plan's "Start here" section): what's done, what's
+open, and the hard-won facts. Commit any code that's ready. A clean tree, or a stated reason why
+it isn't, saves the next session from guessing.
+
+### 2. Write the handoff prompt to a file
+
+Put it in the project's `tmp/<task>/HANDOFF.md`, not the scratchpad (that's wiped on reboot).
+The next session starts cold, so write for a reader who knows nothing about this conversation:
+
+```markdown
+Continuing <task> from the previous session. <One line: the goal.>
+
+**Read first:** tmp/<task>/NOTES.md (and docs/plans/<plan>.md, "Start here").
+
+**Done:** <what shipped, with commits/PRs: abc1234, PR #42>
+**Now:** <the exact next step, concrete enough to start without asking>
+**Then:** <what follows, briefly>
+
+**Watch out for:** <the facts that took effort: gotchas, ids, why a choice was made,
+what NOT to retry>
+**State:** branch <name>, working tree <clean | what's uncommitted and why>,
+services <anything running or reloaded>.
+```
+
+Keep it short. Facts the notes already hold get a pointer, not a copy.
+
+### 3. Hand off
+
+```bash
+anima session handoff --title "M7: ENT-754 roles" --promptFile tmp/m7/HANDOFF.md
+```
+
+- `sessionId` is filled in from `$ANIMA_SESSION_ID`. A relative `--promptFile` resolves against
+  my session's folder.
+- The new session takes my folder, agent, model and permission profile. Override with
+  `--targetCwd`, `--model` or `--profile` only when the next phase really needs it.
+- Short prompts can go inline with `--prompt "..."` instead.
+- Name the title after the work, like Michael would (`"M7: ENT-754 roles"`), not after the act
+  of handing off.
+
+It returns the new `sessionId` immediately (no streaming), and the new session is already working.
+
+### 4. Then stop
+
+- End my turn with one line pointing at the new session (title and id), and do nothing else in
+  this session. The work lives there now.
+- My session is marked resolved and links forward ("Continued in …"). The new one links back,
+  and its first message names my session id, so it can run
+  `anima session get_history --sessionId <mine>` if the prompt leaves something out.
+- A session hands off **once**. A second call is refused. If the handoff failed (the prompt
+  never went out), my session stays open and I can fix the problem and retry.
+
+## Examples
+
+```bash
+# Context getting full mid-task
+anima session handoff --title "R2 migration: phase 2 (Fuse3)" --promptFile tmp/r2/HANDOFF.md
+
+# Next milestone in a sibling worktree
+anima session handoff --title "Docs pass" --prompt "Read tmp/docs/NOTES.md, then ..." \
+  --targetCwd ~/Projects/fuse/fuse2-docs
+```
+
+## Notes
+
+- **Only inside Anima.** `anima session handoff` needs `$ANIMA_SESSION_ID`, which Anima's agent
+  host sets. In a plain Claude Code terminal session there's nothing to hand off from: write the
+  HANDOFF.md anyway and give Michael the path and a suggested title.
+- **Who follows.** Only clients showing my session move to the new one. A tab showing anything
+  else stays put, so handing off from a background session never yanks Michael away. iOS voice
+  mode retargets its next prompt; the macOS menubar app doesn't follow yet (anima#105).
+- **Unattended sessions** (scheduled runs, night shifts) can hand off too. The new session
+  inherits the same profile, so it keeps the same permissions.
+- The method is `session.handoff` in the session extension
+  (`extensions/session/src/lifecycle/session-handoff.ts` in the anima repo).
