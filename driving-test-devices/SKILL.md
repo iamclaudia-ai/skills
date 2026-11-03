@@ -55,7 +55,8 @@ xcrun devicectl device orientation set --device $D landscapeLeft   # portrait, p
   `-harnessCollect 1` failed with "Missing value for '-l <path>'".
 - **Launch arguments land in NSUserDefaults** (`-key value`). React Native reads them with
   `Settings.get('key')` (iOS only). That is how an app opens a screen without a tap: the
-  claudia-scan harness takes `-harnessOpen scan|batch|room|text -harnessCollect 1`.
+  claudia-scan harness takes `-harnessOpen scan|batch|text -harnessCollect 1` (room mode was
+  removed in claudia-scan 0.4.0).
 - devicectl screenshots of a WDA-driven device show a blue automation banner; `wda.py shot` doesn't.
 - `--console` without `timeout` never returns.
 - A device the build's profile doesn't include fails to install ("profile doesn't include the
@@ -86,7 +87,13 @@ Also runnable as `anima skills run driving-test-devices wda <args>`.
 
 **Coordinates are points**: screenshot pixels divided by the scale (3 on the iPhone 15, 2 on
 the iPad). The Read tool may show a screenshot downscaled; it says by how much. Prefer
-`taplabel` / `tree` over computed coordinates.
+`taplabel` / `tree` over computed coordinates. On the iPad the Read tool typically shows a
+2000-px-wide landscape shot of a 1180-pt screen: **x × 0.59** gets points. Tapping at the
+screenshot's own x lands far to the right (a 320-pt sidebar tapped at "x=400" missed it and
+looked like a bug).
+
+**`tree` lists every mounted view, including ones off screen** (a pager's neighbouring pages,
+a hidden sidebar). A label in `tree` is not proof it is visible: confirm with `shot`.
 
 **Starting the runner** (if `status` fails), in its tmux session, from the WDA folder:
 
@@ -124,6 +131,13 @@ adb shell settings put system user_rotation 1                               # 0,
 adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml ./tmp/ui.xml   # element tree
 ```
 
+**A tablet width on a phone** (no Android tablet on hand): lower the density so the window is
+wider in dp. On the Pixel 7a (1080 px wide), `adb shell wm density 240` gives 720 dp and
+`adb shell wm density 180` gives 960 dp (past Evolution's 900-pt room sidebar breakpoint).
+Always `adb shell wm density reset` afterwards (420 on the Pixel). The activity may restart on
+the change; an Expo DEV client then lands on its launcher and needs the `localhost:8081`
+server tapped.
+
 ## Simulator and emulator
 
 - **iOS Simulator** taps: AXe (`axe tap -x X -y Y --udid U`, `axe describe-ui`, points). Wrap
@@ -144,6 +158,11 @@ adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml ./tmp/ui.xm
 - **Judge a rotation on the live preview, not a frozen proof.**
 - **A Release Android harness can ship stale JS** when only a library under `node_modules`
   changed (claudia-scan trap 19). Check the bundle is fresh before believing a device result.
+- **Record a screen video outside an Expo project, then copy it in.** A new `.mp4` under the
+  project (e.g. `./tmp/pr-images/`) is a new file Metro watches, so it reloads the app mid-take
+  and the reload eats the first taps. Record into the scratchpad and `cp` afterwards.
+  (`adb shell screenrecord` to `/sdcard` is fine; it is the `adb pull` or ffmpeg output path
+  that matters. Wait for `--time-limit` to finish before pulling, or the moov atom is missing.)
 - Never pipe device commands into `tail`/`head` (tmux wrapper). Write files to literal paths:
   dcg blocks `> $VAR/x.png`.
 - A tap while a list or modal is still animating lands on whatever is underneath. Screenshot
