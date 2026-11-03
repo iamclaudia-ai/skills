@@ -59,6 +59,9 @@ or auth failure, and the whole review is refused rather than silently dropped.
 - Listing, resolving, or replying to review threads
 - Managing pending reviews (start → add comments → submit)
 
+> **Part of a review session?** If the repo has `tmp/reviews/QUEUE.md` and this PR is a row in it, load
+> `running-review-sessions` too. After posting, it records the outcome in the queue and hands off to the next PR.
+
 ## Review Workflow: Always Use a Worktree
 
 **IMPORTANT:** Always check out a git worktree before reviewing a PR. Diffs alone are not enough — you need full file access to:
