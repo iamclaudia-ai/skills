@@ -28,8 +28,8 @@ rebuild. Don't silently overwrite a queue another session is working from.
 ### 2. Run the queue
 
 ```bash
-crq        # alias for check-review-queue (~/dotfiles/scripts), run from the repo root
-crq --all  # also shows the hidden drafts, approved and quieted PRs
+check-review-queue        # from the repo root (~/dotfiles/scripts). Michael's `crq` alias doesn't exist in my shell
+check-review-queue --all  # also shows the hidden drafts, approved and quieted PRs
 ```
 
 It lists follow-ups (PRs we reviewed that moved since), direct requests, re-requests and team requests. It
@@ -76,10 +76,10 @@ the old one to `tmp/reviews/archive/QUEUE-<date>.md` first.
 ## Each review in the chain
 
 1. **Read `tmp/reviews/QUEUE.md`**, including the notes carried forward to this PR.
-2. **Run `crq` and reconcile:**
+2. **Run `check-review-queue` and reconcile:**
    - A new re-request or follow-up goes **right after** the current row.
    - A new request goes at the end.
-   - A pending row that `crq` no longer shows (someone else approved it, it merged or closed, it went back to
+   - A pending row that `check-review-queue` no longer shows (someone else approved it, it merged or closed, it went back to
      draft) becomes `skipped` with the reason. Tell Michael.
 3. **Mark the row `reviewing`**, then review it with `reviewing-prs-with-claudia`, the full process: worktree,
    mutation checks, findings plus a recommended verdict. Working files go in `tmp/reviews/<N>/`.
@@ -133,8 +133,8 @@ Statuses: `pending`, `reviewing`, `posted: APPROVE | COMMENT | REQUEST_CHANGES`,
 ## Quieting a follow-up
 
 ```bash
-crq --quiet 32177     # hidden until the PR is updated after this moment
-crq --unquiet 32177
+check-review-queue --quiet 32177     # hidden until the PR is updated after this moment
+check-review-queue --unquiet 32177
 ```
 
 Use it when a follow-up needs nothing from us, like a merge from main or replies that don't ask anything. It
