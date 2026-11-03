@@ -16,7 +16,8 @@
  *      roll the code back to the previous commit and restart again.
  *
  * Also fast-forwards the skills and memory repos when present, so skill scripts
- * and the persona stay in step with the platform that runs them.
+ * and the persona stay in step with the platform that runs them, and links new
+ * global skills into ~/.claude/skills.
  *
  * Usage: update.ts [--check] [--from <commit>] [--restart]
  *
@@ -28,7 +29,15 @@
  * restart never happened. It treats <commit> as where the update started.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  symlinkSync,
+  unlinkSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -228,6 +237,50 @@ function pullCompanion(label: string, dir: string): void {
   );
 }
 
+/**
+ * Link every global skill in the skills repo into ~/.claude/skills, and drop links
+ * whose skill was renamed or deleted. Skills in project-skills.txt belong to one
+ * project's .claude/skills, so they are never linked here.
+ */
+function linkSkills(repoDir: string): void {
+  const active = join(HOME, ".claude/skills");
+  if (!existsSync(join(repoDir, ".git")) || !existsSync(active)) return;
+
+  const listFile = join(repoDir, "project-skills.txt");
+  const projectOnly = new Set(
+    existsSync(listFile)
+      ? readFileSync(listFile, "utf8")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line && !line.startsWith("#"))
+      : [],
+  );
+  const missing = readdirSync(repoDir).filter(
+    (name) =>
+      !projectOnly.has(name) &&
+      existsSync(join(repoDir, name, "SKILL.md")) &&
+      !existsSync(join(active, name)),
+  );
+  const dangling = readdirSync(active).filter((name) => {
+    const path = join(active, name);
+    return (
+      lstatSync(path).isSymbolicLink() &&
+      readlinkSync(path).startsWith(`${repoDir}/`) &&
+      !existsSync(path)
+    );
+  });
+
+  if (CHECK_ONLY) {
+    if (missing.length) console.log(`skills: would link ${missing.join(", ")}`);
+    if (dangling.length) console.log(`skills: would unlink ${dangling.join(", ")} (gone from repo)`);
+    return;
+  }
+  for (const name of missing) symlinkSync(join(repoDir, name), join(active, name));
+  for (const name of dangling) unlinkSync(join(active, name));
+  if (missing.length) console.log(`skills: linked ${missing.join(", ")}`);
+  if (dangling.length) console.log(`skills: unlinked ${dangling.join(", ")} (gone from repo)`);
+}
+
 // ── main ─────────────────────────────────────────────────────
 
 const repo = findRepo();
@@ -247,6 +300,7 @@ if (process.argv.includes("--restart")) {
 }
 
 for (const { label, dir } of COMPANION_REPOS) pullCompanion(label, dir);
+linkSkills(COMPANION_REPOS[0].dir);
 
 run(["git", "fetch", "-q", "origin"], repo);
 const prev = FROM ? run(["git", "rev-parse", FROM], repo) : run(["git", "rev-parse", "HEAD"], repo);

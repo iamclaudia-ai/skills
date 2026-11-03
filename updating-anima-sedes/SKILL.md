@@ -58,6 +58,10 @@ same code and as close to the same config as vesuvius. This skill keeps it there
   phase detached first.
 - **Refuses a dirty checkout** or one not on `main`. Sedes' checkout is a deploy copy; nothing
   should ever be edited there.
+- **New skills get linked.** Every skill in the skills repo is linked into Sedes' `~/.claude/skills`
+  except the ones in `project-skills.txt` (those live in one project's `.claude/skills`). Links to a
+  renamed or deleted skill are removed. A change to `update.ts` itself takes effect on the next run,
+  since the running copy is the one from before the pull.
 - **Rollback is code only.** Migrations are additive and stay applied, which old code tolerates.
 - **Paths differ.** Sedes' Anima checkout is `~/Projects/anima` (vesuvius:
   `~/Projects/iamclaudia-ai/anima`); the script finds either, or honours `ANIMA_REPO`. The skills

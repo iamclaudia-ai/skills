@@ -1,0 +1,5 @@
+# Skills linked into one project's .claude/skills instead of ~/.claude/skills.
+# Every other skill in this repo is global, and updating-anima-sedes links it on Sedes.
+running-beehiiv-rails-console
+sweeping-player-feedback
+using-react-doctor
