@@ -13,7 +13,8 @@ desk and which don't (a new Support topic notifies nobody), who each reply email
 conventions, posting as Claudia #10000 with her own read marker, and the common cases (duplicate
 accounts, score and word complaints). Keep it current instead of re-deriving it here.
 
-**The bookmark lives at `tmp/nutwords/comment-review-state.md`** (gitignored) in the `tnh` repo.
+**The bookmark lives at `tmp/nutwords/comment-review-state.md`** (gitignored) in the nutwords repo
+(`~/Projects/3votech/nutwords`).
 Read it first: it holds the last reviewed `seq`, the items carried forward, and the previous
 round's findings. Update it at the end of every sweep. Without it you re-read 1,300 messages.
 
@@ -32,6 +33,13 @@ file, or the two copies will drift.
 | `game`                         | per-game comments — the trash-talk wall             | **incrementally**, `seq > bookmark`                                           |
 | `forum` (`general`, `support`) | deliberate posts, often direct questions to Kiliman | **in full** — it is small (~150 rows) and thread replies only read in context |
 
+**Game comments are sampled, not read in full** (Michael, 3 Nov 2026: "they get really chatty").
+Three nets: a keyword net over every new comment for anything about the site, read in context;
+a rotation of ~5 players a day steered by the **player dossiers** (`tmp/nutwords/players.md`:
+insightful / grumbler / support-heavy / banter / ignore); and the 24 hours after each deploy.
+The daily 7:30 AM run's runbook, `~/.anima/tasks/feedback-sweep/runbook.md`, has the keyword list
+and the dossier format. The forum is still read in full.
+
 Sweep **both**. Game comments carry the unreported bugs; the forum carries the reported ones —
 including the ones that got no answer. An unanswered support post is itself a finding.
 
@@ -49,7 +57,7 @@ cd packages/api && bun --env-file=.env.prod scripts/_tmp-sweep.ts
 Never `source .env.prod` — the `&` in the URL silently truncates it. Always print the connected
 host as a guard. Delete the `_tmp-*` scripts when the sweep is done.
 
-Dump to the scratchpad and read the files; do not stream 800 comments through a Bash pipe (tokf
+Dump to the repo's `tmp/feedback-sweep/<date>/` and read the files; do not stream 800 comments through a Bash pipe (tokf
 truncates them and you will silently review half a window).
 
 ```sql
