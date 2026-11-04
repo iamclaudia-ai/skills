@@ -29,12 +29,16 @@ rebuild. Don't silently overwrite a queue another session is working from.
 
 ```bash
 check-review-queue        # from the repo root (~/dotfiles/scripts). Michael's `crq` alias doesn't exist in my shell
-check-review-queue --all  # also shows the hidden drafts, approved and quieted PRs
+check-review-queue --all  # also shows the hidden drafts, approved, quieted and team-requested PRs
 ```
 
-It lists follow-ups (PRs we reviewed that moved since), direct requests, re-requests and team requests. It
-already hides drafts, PRs a human has approved (bot approvals like Unblocked don't count), quieted PRs, and
-anything idle past `--days`. Trust its filtering; don't re-derive it.
+It lists follow-ups (PRs we reviewed that moved since), direct requests and re-requests. It already hides
+drafts, PRs a human has approved (bot approvals like Unblocked don't count), quieted PRs, anything idle past
+`--days`, and **team requests**. Trust its filtering; don't re-derive it.
+
+The queue is only PRs that ask for Michael **by name**. A request to a team he's on isn't one: team membership
+is a grab bag, and he doesn't want those reviewed by default. Don't queue them or offer them (`--team` lists
+them if he asks).
 
 ### 3. Take a cursory look at each PR
 
