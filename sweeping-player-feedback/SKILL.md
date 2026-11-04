@@ -8,6 +8,11 @@ description: "MUST be used when reviewing NutWords player chatter for unreported
 Players almost never file a bug. They complain **to each other**, mid-game, and move on. The
 sweep exists to find those — the ones nobody reported.
 
+**Before answering anyone, read `SUPPORT.md` at the repo root.** It has which channels reach the
+desk and which don't (a new Support topic notifies nobody), who each reply emails, the ✅/👀/👍
+conventions, posting as Claudia #10000 with her own read marker, and the common cases (duplicate
+accounts, score and word complaints). Keep it current instead of re-deriving it here.
+
 **The bookmark lives at `tmp/nutwords/comment-review-state.md`** (gitignored) in the `tnh` repo.
 Read it first: it holds the last reviewed `seq`, the items carried forward, and the previous
 round's findings. Update it at the end of every sweep. Without it you re-read 1,300 messages.
