@@ -12,6 +12,19 @@ A CLI for controlling browsers with sandboxed JavaScript scripts.
 
 Run `dev-browser --help` to learn more.
 
+## Always stop the daemon when you're done
+
+The first `dev-browser` call starts a background daemon that outlives your session, and each named browser keeps its own headless Chromium alive. Nothing cleans them up. One forgotten daemon ran for three days and held 30 Chromium processes, which helped push Michael's Mac to a load average over 500.
+
+When the browsing task is finished, before reporting back:
+
+```bash
+dev-browser stop      # stops the daemon and every browser it launched
+dev-browser status    # confirm it's gone
+```
+
+Skip the stop only if another session is actively using it right now (check `dev-browser browsers`). `stop` never closes Chrome you attached to with `--connect`.
+
 ## LLM USAGE GUIDE:
 
 Write small, focused scripts. Each script should do ONE thing: navigate, click, fill, or check.
