@@ -19,7 +19,12 @@ import { join } from "node:path";
 const API = "https://api.ui.com";
 const SITE = process.env.UNIFI_SITE ?? "default";
 const SECRETS_FILE = process.env.UNIFI_SECRETS_FILE ?? join(homedir(), "dotfiles/secrets/apikeys.sh");
-const ANIMA_ENV = join(homedir(), "Projects/iamclaudia-ai/anima/.env");
+// vesuvius keeps Anima at ~/Projects/iamclaudia-ai/anima, Sedes at ~/Projects/anima.
+const ANIMA_ENV =
+  [process.env.ANIMA_REPO, join(homedir(), "Projects/iamclaudia-ai/anima"), join(homedir(), "Projects/anima")]
+    .filter((dir): dir is string => Boolean(dir))
+    .map((dir) => join(dir, ".env"))
+    .find((p) => existsSync(p)) ?? join(homedir(), "Projects/iamclaudia-ai/anima/.env");
 const CACHE_DIR = join(homedir(), ".cache/unifi");
 const HOST_CACHE = join(CACHE_DIR, "host.json");
 const SKILL_DIR = process.env.SKILL_DIR ?? join(import.meta.dir, "..");
