@@ -1,0 +1,27 @@
+{
+  "id": "managing-unifi-network",
+  "description": "Read-only UniFi network checks through the cloud connector: sweep, health, devices, clients, networks, wlans.",
+  "commands": {
+    "unifi": {
+      "script": "scripts/unifi.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "UniFi CLI (GET only): sweep / health / devices / clients / networks / wlans / hosts / raw. Add --json for machine output.",
+      "args": [
+        {
+          "name": "subcommand",
+          "type": "string",
+          "required": true,
+          "description": "sweep, health, devices, clients, networks, wlans, hosts, raw"
+        },
+        {
+          "name": "...",
+          "type": "string",
+          "required": false,
+          "description": "Subcommand flags (clients: --network, --band, --wired, --wifi, --sort; devices: --ports; raw: <path>; any: --json)"
+        }
+      ],
+      "timeoutMs": 60000
+    }
+  }
+}
