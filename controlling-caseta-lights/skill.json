@@ -1,0 +1,17 @@
+{
+  "id": "controlling-caseta-lights",
+  "description": "Lutron Caseta lights, switches and fans over LEAP: status, on/off/dim, fan speed, scenes. Runs on Anima Sedes (forwards over ssh from elsewhere).",
+  "commands": {
+    "caseta": {
+      "script": "scripts/caseta.sh",
+      "runtime": "bash",
+      "longRunning": false,
+      "description": "status [--json] | on <device> [level] | off <device> | toggle <device> | level <device> <0-100> | fan <device> <off|low|medium|medium-high|high> | scenes | scene <name>. <device> = id or words in its name; --all to act on several matches.",
+      "args": [
+        { "name": "subcommand", "type": "string", "required": true, "description": "status, on, off, toggle, level, fan, scenes, scene" },
+        { "name": "...", "type": "string", "required": false, "description": "Device (id or name words), then level / fan speed; --all, --json" }
+      ],
+      "timeoutMs": 60000
+    }
+  }
+}
