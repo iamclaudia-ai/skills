@@ -1,6 +1,6 @@
 ---
 name: self-reviewing-prs
-description: "MUST be used right after opening a PR of my own, before asking anyone to review it. Covers the self-review pass: which judgment calls earn an inline comment, how to post them with gh-comment (which is NOT the same command as a general PR comment), the pre-submit comment sweep, and attaching phone + desktop screenshots of any UI change (pr-screenshots.sh). Triggers on: self-review, self review, review my own PR, review my PR, after creating a PR, opened a PR, just pushed a PR, pre-review pass, annotate my diff, explain my tradeoffs, flag my judgment calls, inline self-review, review before requesting review, PR is ready for review, PR screenshots, attach screenshot, screenshot in PR, image in PR description, UI change PR."
+description: "MUST be used right after opening a PR of my own, before asking anyone to review it. Covers the self-review pass: which judgment calls earn an inline comment, how to post them with gh-comment (which is NOT the same command as a general PR comment), the pre-submit comment sweep, and attaching phone + desktop screenshots of any UI change (gh --attach, pr-screenshots.py). Triggers on: self-review, self review, review my own PR, review my PR, after creating a PR, opened a PR, just pushed a PR, pre-review pass, annotate my diff, explain my tradeoffs, flag my judgment calls, inline self-review, review before requesting review, PR is ready for review, PR screenshots, attach screenshot, screenshot in PR, image in PR description, UI change PR, gh attach, --attach."
 ---
 
 # Self-Reviewing My Own PRs
@@ -98,38 +98,41 @@ surface, plus the narrowest real layout when width is the question (NutWords: a 
 the fleet's narrowest 300px board). Look at every shot yourself before uploading. Twice now that look
 caught a real problem: a label wrapping, and a badge repeated three times.
 
-**How to attach:** GitHub has no API for the web editor's drag-and-drop uploads, so:
-
-```bash
-~/.claude/skills/self-reviewing-prs/scripts/pr-screenshots.sh <PR> ./tmp/<task>/upload/<PR>/*.png
-```
-
-It puts the files on an **orphan `pr-screenshots` branch** under `pr-<N>/` (it creates the branch the
-first time; no shared history with `main`, never merged, never deployed) and prints one
-`![name](https://github.com/<repo>/blob/pr-screenshots/pr-<N>/<file>?raw=true)` line per file.
-Run it from the repo root. Name the files for what they show (`phone-390-your-turn.png`), since the
-file name becomes the alt text. Re-uploading the same name replaces the image and keeps its URL.
-
-Then embed them in a `## Screenshots` section, phone and desktop side by side. A table of `<img>`
-tags keeps tall phone shots from swamping the page:
+**How to attach: `gh --attach`** (gh 2.98+). It uploads to GitHub's own user-attachments storage,
+the same as dragging an image into the web editor. Name files for what they show
+(`phone-390-your-turn.png`), keep the names unique within the PR, and write the body with **local
+paths**, phone and desktop side by side. A table of `<img>` tags keeps tall phone shots from
+swamping the page:
 
 ```markdown
+## Screenshots
+
 | Phone, 390 | Desktop, 1280 |
 | --- | --- |
-| <img src="…phone-390-your-turn.png?raw=true" width="260"> | <img src="…desktop-your-turn.png?raw=true" width="420"> |
+| <img src="./tmp/<task>/upload/phone-390-your-turn.png" width="260"> | <img src="./tmp/<task>/upload/desktop-your-turn.png" width="420"> |
 ```
 
-Update the body with `gh-stack submit -t "<title>" --body-file <file>` while on that branch (it keeps
-the stack footer), or `gh pr edit` outside a stack.
+Push the body the usual way (`gh-stack submit -t … --body-file …` on that branch keeps the stack
+footer), then, from the repo root:
+
+```bash
+~/.claude/skills/self-reviewing-prs/scripts/pr-screenshots.py <PR>
+```
+
+It reads the **live** body, uploads every `./…` image it references, and rewrites each reference to
+the uploaded URL. Then check the body has no `./tmp/` left (the script exits non-zero if it does).
 
 **Traps:**
 
-- **`blob/…?raw=true`, not `raw.githubusercontent.com`.** On a private repo only the blob URL
-  renders, because it uses the viewer's GitHub session.
-- **`curl` can't verify it.** github.com page URLs ignore API tokens, so curl gets a 404 even with
-  `gh auth token`. To check, open the PR in Michael's Chrome (`controlling-the-browser`, profile
-  `kiliman@gmail.com`) and read each image's `naturalWidth`. 0 means it hasn't loaded, so scroll to
-  the images and wait first.
+- **`--attach` only rewrites markdown `![](./file)` references.** It leaves an `<img src="./file">`
+  alone and appends the image as `![name](url)` at the end instead. That is why the script exists:
+  it swaps those URLs into the `<img>` tags (matched by file name) and deletes the appended copies.
+  Plain `gh pr edit N --attach ./a.png` is fine when no width is needed.
+- **Never `gh pr edit --body-file` a body you wrote from scratch on a stacked PR.** It drops
+  gh-stack's footer. The script edits the live body, so the footer survives.
+- **`curl` can't verify an attachment.** On a private repo the URLs need a browser session. To
+  check, open the PR in Michael's Chrome (`controlling-the-browser`, profile `kiliman@gmail.com`)
+  and read each image's `naturalWidth`. 0 means it hasn't loaded yet, so scroll down and wait.
 - Data the dev DB lacks (a series record, say) can be injected with Playwright's `page.route` on the
   API response, so the real render path draws it. Say so in the PR.
 
