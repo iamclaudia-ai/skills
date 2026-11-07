@@ -25,7 +25,7 @@ screenshot. Use this instead of asking Michael to touch a phone.
 | Michael's iPhone 15 Pro Max | `00008130-001E552A20FA8D3A` | (Wi-Fi via devicectl) | his. Install/launch/screenshot only, no WDA |
 | Claudia's Galaxy S25 | `R3CXC0LS9BR` | `claudias-galaxy-s25` | mine. Small phone (3-across grids) |
 | Pixel 7a | `34061JEHN03815` | | Michael's dev phone |
-| BOOX Go 10.3 Gen II | (arriving) | | e-ink scan target, adb. See "Test station" |
+| BOOX Go 10.3 Gen II | `448EDB98` | Wi-Fi `192.168.1.135` | e-ink scan target, adb (model `Go103`, ONYX). Wi-Fi MAC `00:0a:67:cf:a2:e5`; UniFi mislabels it "Nokia 6". Doesn't answer ping. See "Test station" |
 
 `xcrun devicectl list devices` and `adb devices -l` show what is reachable right now. A device
 listed as "unavailable" is asleep or off Wi-Fi: ask Michael to wake or plug it in.
