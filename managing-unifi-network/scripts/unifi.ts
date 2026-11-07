@@ -631,6 +631,65 @@ async function cmdRename(mac: string | undefined, name: string | undefined, yes:
   console.log(`renamed ${mac}: ${current} → "${name}"`);
 }
 
+const FINGERPRINT_CACHE = join(CACHE_DIR, "fingerprints.json");
+
+/** UniFi's device-type catalog (id → name), cached for a week. */
+async function deviceTypes(): Promise<Record<string, string>> {
+  try {
+    const cached = JSON.parse(readFileSync(FINGERPRINT_CACHE, "utf-8")) as { at: number; types: Record<string, string> };
+    if (Date.now() - cached.at < 7 * 86400_000) return cached.types;
+  } catch {
+    // fetch below
+  }
+  const body = (await network("v2/api/fingerprint_devices/0")) as { dev_ids: Record<string, { name: string }> };
+  const types = Object.fromEntries(Object.entries(body.dev_ids).map(([id, v]) => [id, v.name]));
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(FINGERPRINT_CACHE, JSON.stringify({ at: Date.now(), types }));
+  return types;
+}
+
+async function cmdTypes(query: string | undefined) {
+  if (!query) die('usage: unifi types "<search>"   e.g. types "galaxy s25"');
+  const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const hits = Object.entries(await deviceTypes()).filter(([, name]) => re.test(name));
+  table(hits.slice(0, 40).map(([id, name]) => ({ id, name })));
+  if (hits.length > 40) console.log(`  … ${hits.length - 40} more; narrow the search`);
+}
+
+/** The current type a client shows, from the v2 clients API. */
+async function currentType(mac: string): Promise<{ id?: number; override: boolean } | undefined> {
+  const active = (await network("v2/api/site/default/clients/active?includeTrafficUsage=false")) as Json[];
+  const c = active.find((x) => String(x.mac).toLowerCase() === mac);
+  if (!c) return undefined;
+  const fp = (c.fingerprint ?? {}) as Json;
+  return { id: num(fp.dev_id_override) ?? num(fp.dev_id), override: Boolean(fp.has_override) };
+}
+
+/**
+ * Override the device type UniFi guessed for a client (the icon and model it shows).
+ * A write: only with Michael's OK, and nothing changes without --yes.
+ */
+async function cmdSetType(mac: string | undefined, typeId: string | undefined, yes: boolean) {
+  if (!mac || !typeId || !/^\d+$/.test(typeId)) die('usage: unifi set-type <mac> <type-id> [--yes]   (find ids with: unifi types "<search>")');
+  const want = mac.toLowerCase();
+  const types = await deviceTypes();
+  const typeName = types[typeId];
+  if (!typeName) die(`unknown type id ${typeId}`);
+  const user = (await legacy("rest/user")).find((u) => String(u.mac).toLowerCase() === want);
+  if (!user) die(`no client with MAC ${mac}`);
+  const label = String(user.name || user.hostname || mac);
+  const before = await currentType(want);
+  const beforeName = before?.id !== undefined ? (types[String(before.id)] ?? `#${before.id}`) : "(unknown, client offline)";
+  if (!yes) return console.log(`would set ${label}: ${beforeName} → ${typeName} (#${typeId})   (rerun with --yes to apply)`);
+  // rest/user accepts dev_id_override but ignores it; the v2 station endpoint is what the app uses.
+  const saved = (await sendJson("PUT", await networkUrl(`v2/api/site/default/station/${want}/fingerprint_override`), {
+    mac: want,
+    dev_id_override: Number(typeId),
+  })) as Json;
+  if (num(saved.dev_id_override) !== Number(typeId)) die(`PUT returned dev_id_override ${saved.dev_id_override}`);
+  console.log(`set ${label}: ${beforeName} → ${typeName} (#${typeId})`);
+}
+
 // ───────────────────────────── main ─────────────────────────────
 
 const HELP = `unifi — read-only UniFi Network CLI (cloud connector, GET only)
@@ -651,6 +710,9 @@ Commands:
 Writes (only with Michael's explicit OK):
   rename <mac> "<name>" [--yes]
                         set a client's display name; without --yes it only shows the change
+  set-type <mac> <type-id> [--yes]
+                        override the device type UniFi guessed (icon + model)
+  types "<search>"      search UniFi's device-type catalog for a type id (read-only)
 
 Add --json to any read command for machine-readable output.`;
 
@@ -682,6 +744,14 @@ switch (cmd) {
   case "rename": {
     const positional = rest.filter((a) => a !== "--yes" && a !== "--json");
     await cmdRename(positional[0], positional[1], rest.includes("--yes"));
+    break;
+  }
+  case "types":
+    await cmdTypes(rest.filter((a) => a !== "--json").join(" ") || undefined);
+    break;
+  case "set-type": {
+    const positional = rest.filter((a) => a !== "--yes" && a !== "--json");
+    await cmdSetType(positional[0], positional[1], rest.includes("--yes"));
     break;
   }
   case "raw":

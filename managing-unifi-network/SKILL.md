@@ -15,11 +15,11 @@ Michael's home network runs on UniFi. This skill reads it through UniFi's **clou
 - Checking whether a device or access point is offline
 - Looking at VLANs, mDNS/IGMP settings, or which SSID maps to which network
 
-## Read-only, except names
+## Read-only, except names and device types
 
-Every command reads only (`GET`), except **`rename`**, which sets a client's display name. Michael asked me to manage device names (2026-11-07): rename a client once its identity is **confirmed** (MAC, adb/devicectl/WDA, or join timing), say what I renamed, and ask first when it's a guess. `rename` changes nothing without `--yes`.
+Every command reads only (`GET`), except **`rename`** (a client's display name) and **`set-type`** (the device type UniFi guessed, which sets its icon and model). Michael asked me to manage both (2026-11-07): change a client once its identity is **confirmed** (MAC vendor, adb/devicectl/WDA, join timing, or Michael telling me), say what I changed, and ask first when it's a guess. Neither changes anything without `--yes`. The UniFi web UI only offers the alias, not the type, so `set-type` is the only way he has to fix a type.
 
-**Every other write (restart a device, block or kick a client, change a device type, channel, SSID, VLAN or any other setting) needs Michael's explicit OK first**, and the CLI doesn't implement any of them. If a fix needs a config change, tell Michael what you'd change and why.
+**Every other write (restart a device, block or kick a client, change a channel, SSID, VLAN or any other setting) needs Michael's explicit OK first**, and the CLI doesn't implement any of them. If a fix needs a config change, tell Michael what you'd change and why.
 
 ## Available Commands
 
@@ -36,6 +36,8 @@ One runner command, `unifi`, with subcommands:
 | `hosts [--refresh]` | Consoles on the account; `--refresh` re-resolves the cached host id |
 | `raw <path>` | GET any path (see below). Secrets are always redacted |
 | `rename <mac> "<name>" [--yes]` | Set a client's display name (`PUT rest/user/<id>`), then read it back to confirm. Without `--yes` it only prints the change. `""` clears the name |
+| `types "<search>"` | Search UniFi's device-type catalog (`v2/api/fingerprint_devices/0`, ~6,000 types, cached a week) for an id |
+| `set-type <mac> <type-id> [--yes]` | Override a client's device type (`PUT v2/api/site/default/station/<mac>/fingerprint_override`). `PUT rest/user` with `dev_id_override` returns 200 but **ignores it**. Verify with the v2 clients endpoint: `fingerprint.has_override`, `model_name` |
 
 Add `--json` to any subcommand for machine-readable output.
 
@@ -89,8 +91,10 @@ Also: the Wi-Fi subsystem shows `warning` purely because of that AP.
 - Nearly every gadget is still on Default. Michael's plan: add an IoT-5 (5 GHz) SSID for the streaming devices and move the gadgets off Default. He's holding off until the vesuvius UDP-leak investigation finishes, so **don't push config changes**.
 - **Wired:** vesuvius `.14` (USW Ultra port 6), anima-sedes `.157` (port 5), panarea `.44` (port 4, 100 Mbps), Living-Room Apple TV `.55` (router port 2). The switch uplinks to router port 1; router port 4 is the 2.5G WAN (MediaCom).
 - **Naming convention** (all applied 2026-11-07): owner + device (`Michael's iPhone`, `Claudia's iPad`), a machine with two links gets `(Wi-Fi)` / `(wired)` (`vesuvius`, `Anima Sedes`, `panarea`), and a device's old IoT-SSID address gets `(IoT address)` so a sweep shows at once if it drifts back there.
+- **UniFi's "vendor" column shows the guessed type's maker, not the MAC's.** A Ring device guessed as "Apple TV 4K" shows vendor Apple. Trust the MAC prefix: `18:7f:88` is Ring, `10:bf:67` / `40:f6:bc` / `fc:49:2d` / `58:a8:e8` are Amazon, `c0:95:6d` is Apple (the Apple TVs), `10:d5:61` / `d8:1f:12` / `a0:92:08` are Tuya plugs and sensors. Look up an unknown prefix with `curl -s https://api.macvendors.com/<first 3 octets>`.
+- Types set 2026-11-07: Galaxy S25, Pixel 7A, Apple Watch Ultra 3, Mac Mini 2024 (Sedes Wi-Fi), MacBook Pro 16" M3 Max (vesuvius, both links), Dell OptiPlex 7070 Micro (panarea Wi-Fi), Apple iPhone (Lisa's), HP Printer MFP (OfficeJet), BOOX Go Color 7 (closest to the Go 10.3, which isn't in the catalog).
 - **Michael's IoT plan:** the IoT SSID exists because the Elgato Key Light kept dropping on 5 GHz and needs 2.4 GHz. New gadgets go on IoT; the streaming devices will get an IoT-5 (5 GHz) SSID; personal devices stay on `volcanictech`.
-- **Who's who (checked 2026-11-07):** Michael's iPhone 15 Pro Max `.153`; Claudia's iPhone 15 `.134`, iPad `.244` (`02:e4:d9:aa:85:56`), Galaxy S25 `.185`; Pixel 7a `.26`; living-room iPhone `.133`. "Nokia 6" `.135` is the **BOOX Go 10.3** e-ink tablet (confirmed over adb). Macs: vesuvius (MacBook Pro M3 Max, wired `.14` via CalDigit + Wi-Fi `.248` "Mac"), rainier (MacBook Pro 16" 2019, Wi-Fi `.22`), Michael's work MacBook (MDM, name can't change; seen as `MichaelrtersMBP` until Oct 24). panarea = the Windows machine (Dell, wired `.44`, Wi-Fi `.213`).
+- **Who's who (checked 2026-11-07):** Michael's iPhone 15 Pro Max `.153`; Claudia's iPhone 15 `.134`, iPad `.244` (`02:e4:d9:aa:85:56`), Galaxy S25 `.185`; Pixel 7a `.26`; Lisa's iPhone `.133` (living room). Living Room Apple TV is wired (`c0:95:6d:5a:44:f3`, router port 2); HP OfficeJet `.23`. "Nokia 6" `.135` is the **BOOX Go 10.3** e-ink tablet (confirmed over adb). Macs: vesuvius (MacBook Pro M3 Max, wired `.14` via CalDigit + Wi-Fi `.248` "Mac"), rainier (MacBook Pro 16" 2019, Wi-Fi `.22`), Michael's work MacBook (MDM, name can't change; seen as `MichaelrtersMBP` until Oct 24). panarea = the Windows machine (Dell, wired `.44`, Wi-Fi `.213`).
 - Personal devices belong on `volcanictech` at 5/6 GHz. Phones on the IoT SSID get stuck on 2.4 GHz (this happened to Michael's iPhone once: IoT setup apps sometimes need the phone on 2.4 GHz while pairing). Michael turned off auto-join for the IoT SSID.
 
 ## Notes
