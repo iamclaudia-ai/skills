@@ -74,6 +74,9 @@ Also: the Wi-Fi subsystem shows `warning` purely because of that AP.
 - **Satisfaction** is UniFi's 0-100 experience score per client (−1 or blank = not enough data).
 - **Signal** in dBm: −30 to −60 great, −60 to −70 fine, below −75 weak.
 - iPhones use a private (randomized) Wi-Fi address per network, so several show up as plain `iPhone`. To tell which is which, match the MAC with the phone's Settings → Wi-Fi → ⓘ → Wi-Fi Address, or match the association time (`raw api/s/default/stat/sta`, `assoc_time`) to when it joined. Michael's iPhone on `volcanictech` is `12:cd:72:ef:59:93` (it joined at 14:00 on 2026-11-07, the second his phone left the IoT SSID).
+- iOS **rotates** private addresses (about every two weeks), so one phone piles up several `iPhone` entries in `raw api/s/default/rest/user` (every client ever seen, with `first_seen`/`last_seen`). Claudia's iPhone 15 is `.134`: WDA's `ServerURLHere` log line and `wda.py status` give its live IP.
+- **UniFi's device-type guesses are mostly wrong here.** `raw "v2/api/site/default/clients/active?includeTrafficUsage=false"` gives `display_name` and `fingerprint` (`model_name`, `has_override`); about 20 clients read "Apple TV 4K" (a Galaxy, a Chromecast, Tuya plugs) and several read "iPhone 15 Pro Max" (panarea's Wi-Fi adapter, an Echo). Don't trust a type without a MAC, hostname, or timing check. Fixing one means a fingerprint override, which is a write: ask Michael first.
+- `stat/event` returns 404 through the connector.
 - Unnamed clients show their vendor (OUI) or MAC. `wlan0` clients are usually smart plugs and other ESP-based gadgets.
 - Client `↓/↑` is the client's download/upload (the AP's or switch port's tx is the client's download).
 
