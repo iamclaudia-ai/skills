@@ -53,7 +53,7 @@ Outside Anima, run it directly: `bun ~/.claude/skills/managing-unifi-network/scr
 
 ## How it connects
 
-- **Key:** `UNIFI_API_KEY`, from the environment, else by sourcing `~/dotfiles/secrets/apikeys.sh` in a subshell, else from Anima's `.env` (`~/Projects/iamclaudia-ai/anima` on vesuvius, `~/Projects/anima` on Sedes). Never print it. **Sedes has no key yet**: it fails with a clear error until `UNIFI_API_KEY` is added to her Anima `.env`. (`UNIFI_SECRETS_FILE` overrides the path.)
+- **Key:** `UNIFI_API_KEY`, from the environment, else by sourcing `~/dotfiles/secrets/apikeys.sh` in a subshell, else from Anima's `.env` (`~/Projects/iamclaudia-ai/anima` on vesuvius, `~/Projects/anima` on Sedes). Never print it. Sedes has no `apikeys.sh`; her key is in her Anima `.env`. (`UNIFI_SECRETS_FILE` overrides the path.)
 - **It's a Site Manager (cloud) key.** The local console (`https://192.168.1.1`) answers **401** to it. Don't try to use it locally.
 - **Base URL:** `https://api.ui.com/v1/connector/consoles/<hostId>/proxy/network/<path>`, header `X-API-KEY`. The host id comes from `GET https://api.ui.com/v1/hosts` (the console with an active `network` controller) and is cached in `~/.cache/unifi/host.json`. `UNIFI_HOST_ID` overrides it.
 - **Both APIs work through the connector:** the official `integration/v1/*` and the legacy `api/s/default/{stat,rest,get}/*`. The CLI uses the legacy one because it's far richer (radio stats, per-client rates, port counters). Useful legacy paths: `stat/health`, `stat/device`, `stat/sta`, `rest/networkconf`, `rest/wlanconf`, `rest/setting`, `stat/event`, `stat/alarm`.
@@ -73,6 +73,7 @@ Also: the Wi-Fi subsystem shows `warning` purely because of that AP.
 - **Radio retries** is a short-window counter and swings a lot between reads. Look at the trend, not one sample.
 - **Satisfaction** is UniFi's 0-100 experience score per client (−1 or blank = not enough data).
 - **Signal** in dBm: −30 to −60 great, −60 to −70 fine, below −75 weak.
+- iPhones use a private (randomized) Wi-Fi address per network, so several show up as plain `iPhone`. To tell which is which, match the MAC with the phone's Settings → Wi-Fi → ⓘ → Wi-Fi Address, or match the association time (`raw api/s/default/stat/sta`, `assoc_time`) to when it joined. Michael's iPhone on `volcanictech` is `12:cd:72:ef:59:93` (it joined at 14:00 on 2026-11-07, the second his phone left the IoT SSID).
 - Unnamed clients show their vendor (OUI) or MAC. `wlan0` clients are usually smart plugs and other ESP-based gadgets.
 - Client `↓/↑` is the client's download/upload (the AP's or switch port's tx is the client's download).
 
