@@ -144,9 +144,23 @@ server tapped.
   in `timeout 30`. Native alert buttons and Pressables inside ScrollViews need
   `axe touch --down` / `--up` with a 150 ms hold. Screenshots: `xcrun simctl io U screenshot`.
   No camera: SimCam (`simcamctl set-source --back --image x.png` / `--qr "105"`) fakes one.
-- **Android emulator**: `~/Library/Android/sdk/emulator/emulator -avd Medium_Phone_API_36.1
-  -no-window -no-audio` in tmux (serial `emulator-5554`). Tablets: `Pixel_Tablet_API_36`,
-  `Small_Tablet_API_36`. `-camera-back virtualscene` gives a 3D room; `adb emu rotate` turns it.
+- **Android emulator in evolution-mobile: load the project skill
+  `testing-on-the-android-emulator`.** It boots with `scripts/emulator.js`, installs the one
+  arm64 DEV build, drives by label (`ui.sh`), feeds the camera an image or video
+  (`--camera`, a 2 s swap with no restart), and has fixtures and a recipe per scanner.
+- **Android emulator elsewhere**: `~/Library/Android/sdk/emulator/emulator -avd
+  Medium_Phone_API_36.1 -no-window -no-audio` in tmux (serial `emulator-5554`). Tablets:
+  `Pixel_Tablet_API_36`, `Small_Tablet_API_36`. Google's Android CLI
+  (`$ANDROID_HOME/cmdline-tools/latest/bin/android emulator list|start|stop|create`) replaces
+  avdmanager; `start` waits for a full boot, but `create` exits 0 on failure.
+- **The emulator's camera can be any file** (checked 2026-11-07, emulator 36.3):
+  `-camera-back imagefile:/ABS/x.png` or `videofile:/ABS/x.mp4` (loops). PNG only (a JPEG fails
+  silently and the front "pixel house" camera opens); turn the content 90° anticlockwise
+  (`sips -r 270`, ffmpeg `transpose=2`). The file is re-read whenever a camera opens, so swap it
+  in place (write beside, rename), then background the app and bring it back
+  (`input keyevent KEYCODE_HOME`, `monkey -p <pkg> -c android.intent.category.LAUNCHER 1`).
+  `-help-camera-back`'s `videoplayback` is stale and refused. `-camera-back virtualscene` gives a
+  3D room (its wall poster is `emulator/resources/poster.png`); `adb emu rotate` turns it.
 
 ## Traps
 
