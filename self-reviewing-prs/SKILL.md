@@ -1,6 +1,6 @@
 ---
 name: self-reviewing-prs
-description: "MUST be used right after opening a PR of my own, before asking anyone to review it. Covers the self-review pass: which judgment calls earn an inline comment, how to post them with gh-comment (which is NOT the same command as a general PR comment), and the pre-submit comment sweep. Triggers on: self-review, self review, review my own PR, review my PR, after creating a PR, opened a PR, just pushed a PR, pre-review pass, annotate my diff, explain my tradeoffs, flag my judgment calls, inline self-review, review before requesting review, PR is ready for review."
+description: "MUST be used right after opening a PR of my own, before asking anyone to review it. Covers the self-review pass: which judgment calls earn an inline comment, how to post them with gh-comment (which is NOT the same command as a general PR comment), the pre-submit comment sweep, and attaching phone + desktop screenshots of any UI change (pr-screenshots.sh). Triggers on: self-review, self review, review my own PR, review my PR, after creating a PR, opened a PR, just pushed a PR, pre-review pass, annotate my diff, explain my tradeoffs, flag my judgment calls, inline self-review, review before requesting review, PR is ready for review, PR screenshots, attach screenshot, screenshot in PR, image in PR description, UI change PR."
 ---
 
 # Self-Reviewing My Own PRs
@@ -83,8 +83,55 @@ moving a checkout somebody else may be standing in.
    Then hunt comments the diff **falsified**, including ones outside the diff whose claims the new
    code broke.
 3. **Mutation-test any new test** before you vouch for it (see below).
-4. Post the inline self-review comments.
-5. Only then ask for review.
+4. **UI change? Attach screenshots** to the PR body, phone and desktop (see below).
+5. Post the inline self-review comments.
+6. Only then ask for review.
+
+## Screenshots for any UI change
+
+Michael wants to **see** a UI change before approving it, and above all to see that the buttons fit
+on a phone. "Screenshots are in `tmp/…`" in a PR body is not attaching them: he reviews on GitHub,
+not in my worktree.
+
+**What to shoot:** a ~390px phone (dark mode) and a 1280 desktop (light mode) for every changed
+surface, plus the narrowest real layout when width is the question (NutWords: a 339px window gives
+the fleet's narrowest 300px board). Look at every shot yourself before uploading. Twice now that look
+caught a real problem: a label wrapping, and a badge repeated three times.
+
+**How to attach:** GitHub has no API for the web editor's drag-and-drop uploads, so:
+
+```bash
+~/.claude/skills/self-reviewing-prs/scripts/pr-screenshots.sh <PR> ./tmp/<task>/upload/<PR>/*.png
+```
+
+It puts the files on an **orphan `pr-screenshots` branch** under `pr-<N>/` (it creates the branch the
+first time; no shared history with `main`, never merged, never deployed) and prints one
+`![name](https://github.com/<repo>/blob/pr-screenshots/pr-<N>/<file>?raw=true)` line per file.
+Run it from the repo root. Name the files for what they show (`phone-390-your-turn.png`), since the
+file name becomes the alt text. Re-uploading the same name replaces the image and keeps its URL.
+
+Then embed them in a `## Screenshots` section, phone and desktop side by side. A table of `<img>`
+tags keeps tall phone shots from swamping the page:
+
+```markdown
+| Phone, 390 | Desktop, 1280 |
+| --- | --- |
+| <img src="…phone-390-your-turn.png?raw=true" width="260"> | <img src="…desktop-your-turn.png?raw=true" width="420"> |
+```
+
+Update the body with `gh-stack submit -t "<title>" --body-file <file>` while on that branch (it keeps
+the stack footer), or `gh pr edit` outside a stack.
+
+**Traps:**
+
+- **`blob/…?raw=true`, not `raw.githubusercontent.com`.** On a private repo only the blob URL
+  renders, because it uses the viewer's GitHub session.
+- **`curl` can't verify it.** github.com page URLs ignore API tokens, so curl gets a 404 even with
+  `gh auth token`. To check, open the PR in Michael's Chrome (`controlling-the-browser`, profile
+  `kiliman@gmail.com`) and read each image's `naturalWidth`. 0 means it hasn't loaded, so scroll to
+  the images and wait first.
+- Data the dev DB lacks (a series record, say) can be injected with Playwright's `page.route` on the
+  API response, so the real render path draws it. Say so in the PR.
 
 ## Mutation-test before you claim a regression test works
 
