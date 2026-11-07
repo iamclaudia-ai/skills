@@ -1,6 +1,6 @@
 ---
 name: driving-test-devices
-description: "MUST be used when installing, launching, tapping, screenshotting, rotating or otherwise driving a real phone or tablet (iPhone, iPad, Pixel, Galaxy, BOOX) or a simulator/emulator from the Mac without a human touching it. Covers the device roster and which ones are safe to drive, devicectl (install, launch with arguments, console, screenshot, orientation), WebDriverAgent taps/typing/swipes on iOS via wda.py, adb input/screencap/rotation on Android, AXe and SimCam on the Simulator, headless emulators, and the traps (interface-only rotation, points vs pixels, stale bundles, production data). Triggers on: tap the phone, tap the iPad, drive the device, device automation, UI automation, screenshot the phone, screenshot the iPad, rotate the device, landscape test, install on device, deploy to my phone, launch the app on device, devicectl, WebDriverAgent, WDA, wda.py, adb tap, adb screencap, adb input, emulator, simulator taps, AXe, SimCam, test station, test rig, camera test, scanner test on device, e-ink, BOOX, turntable."
+description: "MUST be used when installing, launching, tapping, screenshotting, rotating or otherwise driving a real phone or tablet (iPhone, iPad, Pixel, Galaxy, BOOX) or a simulator/emulator from the Mac without a human touching it. Covers the device roster and which ones are safe to drive, devicectl (install, launch with arguments, console, screenshot, orientation), WebDriverAgent taps/typing/swipes on iOS via wda.py, adb input/screencap/rotation on Android, recording the room with the Yeti X to prove a sound is actually heard (rec.swift, tones.py), AXe and SimCam on the Simulator, headless emulators, and the traps (interface-only rotation, points vs pixels, stale bundles, production data). Triggers on: tap the phone, tap the iPad, drive the device, device automation, UI automation, screenshot the phone, screenshot the iPad, rotate the device, landscape test, install on device, deploy to my phone, launch the app on device, devicectl, WebDriverAgent, WDA, wda.py, adb tap, adb screencap, adb input, emulator, simulator taps, AXe, SimCam, test station, test rig, camera test, scanner test on device, e-ink, BOOX, turntable, is the beep audible, record the phone, hear the device, microphone test, Yeti, sound test, audio test, first beep lost, beep not heard, record audio from the Mac."
 ---
 
 # Driving Test Devices
@@ -161,6 +161,55 @@ server tapped.
   (`input keyevent KEYCODE_HOME`, `monkey -p <pkg> -c android.intent.category.LAUNCHER 1`).
   `-help-camera-back`'s `videoplayback` is stale and refused. `-camera-back virtualscene` gives a
   3D room (its wall poster is `emulator/resources/poster.png`); `adb emu rotate` turns it.
+
+## Hearing a device: was the sound actually audible?
+
+"The beep plays" in a log (`currentTime` reaching the end) is not "the beep is heard". To know,
+record the room while the device plays, and look for the tone in the recording. First used
+2026-11-07 on evolution-mobile #390: it showed that an Android expo-audio player's **first play
+is silent** (a 200 ms beep vanished just like an 80 ms one), which overturned the theory that
+had been coded without measuring.
+
+**The microphone is the Yeti X** on Michael's desk, the Mac's default input (stereo, 48 kHz),
+next to the phones. Mic permission belongs to the process that runs my shell (the watchdog):
+the first recording raises a macOS prompt that Michael must approve, and **until he does,
+every recording is pure zeros**, with no error. Ask him first, and to keep the room quiet
+(door shut, no dictation) and the phone's volume up.
+
+```bash
+swiftc -O -o ./tmp/tools/rec ~/.claude/skills/driving-test-devices/scripts/rec.swift  # once
+./tmp/tools/rec ./tmp/beep/run.wav 16          # 16 s, 16-bit mono 48 kHz, default input
+python3 -I ~/.claude/skills/driving-test-devices/scripts/tones.py ./tmp/beep/run.wav 2093
+```
+
+- **Don't record with ffmpeg.** Its avfoundation input runs for the full time but keeps only
+  about a quarter of the samples (a 3 s capture held 0.7 s), whatever the queue size, so the
+  timeline is useless. `rec.swift` (AVAudioRecorder) records at full rate.
+- **Check the level before a test**: record 3 s of the room and look at the peak. All zeros
+  means no permission (or the wrong input), not a quiet room.
+- **Run the recorder in the foreground and the device's actions in the background**, in one
+  command, so the timeline is shared:
+  `(sleep 2; adb shell input tap X Y; sleep 1.2; adb shell input tap X Y) & ./tmp/tools/rec out.wav 8; wait`
+- **Line bursts up by their spacing, not their absolute time.** adb and app latency shift every
+  event by a few hundred ms, but two plays 1.38 s apart in the app's log show up 1.38 s apart in
+  the recording. Log a timestamp at each play (`console.log('[Probe]', Date.now())`) and match.
+- **`tones.py` counts a 5 ms window only when the tone beats its side bands 5:1**, so speech
+  and bangs don't pass for a beep. Without that check, a voice in the next room produced
+  "bursts" at the beep's frequency. Durations include the room's echo (an 80 ms beep reads
+  about 110 ms core and 400 ms audible): compare bursts with each other.
+- **Design the runs so each one separates a cause.** For "the first beep is lost": play cold vs
+  warm (seconds of silence before), a fresh player (restart the app) vs a used one, short clip
+  vs long. A cause that should clip only the *start* of a sound (a slow amplifier) leaves the
+  tail of a long clip audible; a lost *play* loses all of it whatever the length.
+- **Make the sound on demand with a temporary probe**: point a harmless control (a settings
+  switch) at the code that plays it, in an uncommitted edit, and back up the file first
+  (`cp x.tsx ./tmp/x.tsx.bak`, never a `.ts` backup, which tsc picks up; restore with `cp`, as
+  dcg blocks `git checkout --`). A probe that replaces a switch's handler can leave a real
+  setting flipped: put it back and screenshot it.
+- **Fast Refresh can keep running the old code** after you add the probe. Before any recording,
+  tap once and check the probe's log line appears; if not, force-stop the app and relaunch it
+  through the dev-client deep link. The first run here recorded nothing but stale code.
+- The emulator is no help for this: its sound comes out of the Mac and has no phone speaker.
 
 ## Traps
 
