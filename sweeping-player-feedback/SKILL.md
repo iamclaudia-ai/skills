@@ -99,6 +99,21 @@ claim against prod or the code before it reaches Michael:
 Report what you verified and, separately, what you could not. Saying "I could not find the
 renderer for this" is a finding; guessing is not.
 
+## Label every player's words public or private
+
+Each time an issue or an evidence comment names or quotes a player, put the source next to it,
+always in this shape:
+
+- `(Support, seq 2875, public)` or `(General, seq 2901, public)`: a forum post
+- `(email to Michael, public)`: something Michael passed on
+- `(game comment, seq 6230, private)`: chatter between the players of a game
+
+**Why:** the changelog thanks players by name, but only for things they said in public. We read
+game comments to catch bugs and sentiment nobody reports, and a player thanked by name for a
+private remark would wonder how we knew (Michael, 7 Nov 2026). Whoever writes the release notes
+reads these labels instead of re-tracing every name. A name with no label can't go in the
+changelog, so label all of them. The issue itself can quote game comments freely: GitHub is ours.
+
 ## Never take the player's word for their browser or their window
 
 `request.user_agent` and `request.client` are recorded per request, and they settle in one query
