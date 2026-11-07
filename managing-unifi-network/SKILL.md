@@ -15,9 +15,11 @@ Michael's home network runs on UniFi. This skill reads it through UniFi's **clou
 - Checking whether a device or access point is offline
 - Looking at VLANs, mDNS/IGMP settings, or which SSID maps to which network
 
-## Read-only, always
+## Read-only, except names
 
-The CLI only sends `GET`. **Any write (restart a device, block or kick a client, change a channel, SSID, VLAN or any other setting) needs Michael's explicit OK first**, and v1 doesn't implement writes at all. If a fix needs a config change, tell Michael what you'd change and why, and let him do it in the UniFi app or approve a separate change.
+Every command reads only (`GET`), except **`rename`**, which sets a client's display name. Michael asked me to manage device names (2026-11-07): rename a client once its identity is **confirmed** (MAC, adb/devicectl/WDA, or join timing), say what I renamed, and ask first when it's a guess. `rename` changes nothing without `--yes`.
+
+**Every other write (restart a device, block or kick a client, change a device type, channel, SSID, VLAN or any other setting) needs Michael's explicit OK first**, and the CLI doesn't implement any of them. If a fix needs a config change, tell Michael what you'd change and why.
 
 ## Available Commands
 
@@ -33,6 +35,7 @@ One runner command, `unifi`, with subcommands:
 | `wlans` | SSIDs: network, bands, security, guest/IoT flags, client count |
 | `hosts [--refresh]` | Consoles on the account; `--refresh` re-resolves the cached host id |
 | `raw <path>` | GET any path (see below). Secrets are always redacted |
+| `rename <mac> "<name>" [--yes]` | Set a client's display name (`PUT rest/user/<id>`), then read it back to confirm. Without `--yes` it only prints the change. `""` clears the name |
 
 Add `--json` to any subcommand for machine-readable output.
 
@@ -85,6 +88,8 @@ Also: the Wi-Fi subsystem shows `warning` purely because of that AP.
 - **Networks:** Default (untagged, 192.168.1.0/24, SSID `volcanictech`, 2.4+5+6 GHz), IoT (VLAN 2, 192.168.2.0/24, SSID `volcanictech-iot`, 2.4 GHz only), Guest (VLAN 3, 192.168.3.0/24), One-Click VPN. mDNS on for all; IGMP snooping off.
 - Nearly every gadget is still on Default. Michael's plan: add an IoT-5 (5 GHz) SSID for the streaming devices and move the gadgets off Default. He's holding off until the vesuvius UDP-leak investigation finishes, so **don't push config changes**.
 - **Wired:** vesuvius `.14` (USW Ultra port 6), anima-sedes `.157` (port 5), panarea `.44` (port 4, 100 Mbps), Living-Room Apple TV `.55` (router port 2). The switch uplinks to router port 1; router port 4 is the 2.5G WAN (MediaCom).
+- **Naming convention** (all applied 2026-11-07): owner + device (`Michael's iPhone`, `Claudia's iPad`), a machine with two links gets `(Wi-Fi)` / `(wired)` (`vesuvius`, `Anima Sedes`, `panarea`), and a device's old IoT-SSID address gets `(IoT address)` so a sweep shows at once if it drifts back there.
+- **Michael's IoT plan:** the IoT SSID exists because the Elgato Key Light kept dropping on 5 GHz and needs 2.4 GHz. New gadgets go on IoT; the streaming devices will get an IoT-5 (5 GHz) SSID; personal devices stay on `volcanictech`.
 - **Who's who (checked 2026-11-07):** Michael's iPhone 15 Pro Max `.153`; Claudia's iPhone 15 `.134`, iPad `.244` (`02:e4:d9:aa:85:56`), Galaxy S25 `.185`; Pixel 7a `.26`; living-room iPhone `.133`. "Nokia 6" `.135` is the **BOOX Go 10.3** e-ink tablet (confirmed over adb). Macs: vesuvius (MacBook Pro M3 Max, wired `.14` via CalDigit + Wi-Fi `.248` "Mac"), rainier (MacBook Pro 16" 2019, Wi-Fi `.22`), Michael's work MacBook (MDM, name can't change; seen as `MichaelrtersMBP` until Oct 24). panarea = the Windows machine (Dell, wired `.44`, Wi-Fi `.213`).
 - Personal devices belong on `volcanictech` at 5/6 GHz. Phones on the IoT SSID get stuck on 2.4 GHz (this happened to Michael's iPhone once: IoT setup apps sometimes need the phone on 2.4 GHz while pairing). Michael turned off auto-join for the IoT SSID.
 

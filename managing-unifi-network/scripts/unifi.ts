@@ -80,6 +80,18 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
+/** The one write path. Only `rename` calls it, and only with --yes. */
+async function sendJson(method: "PUT", url: string, body: Json): Promise<unknown> {
+  const res = await fetch(url, {
+    method,
+    headers: { "X-API-KEY": KEY, Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) die(`${method} ${url.replace(API, "")} → ${res.status} ${res.statusText}\n${text.slice(0, 400)}`);
+  return text ? JSON.parse(text) : {};
+}
+
 interface HostInfo {
   id: string;
   name: string;
@@ -132,11 +144,15 @@ async function listHosts(): Promise<HostSummary[]> {
 }
 
 let hostPromise: Promise<HostInfo> | undefined;
-async function network(path: string): Promise<unknown> {
+async function networkUrl(path: string): Promise<string> {
   hostPromise ??= resolveHost();
   const host = await hostPromise;
   const clean = path.replace(/^\/+/, "").replace(/^proxy\/network\//, "");
-  return getJson(`${API}/v1/connector/consoles/${encodeURIComponent(host.id)}/proxy/network/${clean}`);
+  return `${API}/v1/connector/consoles/${encodeURIComponent(host.id)}/proxy/network/${clean}`;
+}
+
+async function network(path: string): Promise<unknown> {
+  return getJson(await networkUrl(path));
 }
 
 /** Legacy endpoints wrap results as { meta, data: [...] }. */
@@ -596,6 +612,25 @@ async function cmdRaw(path: string | undefined) {
   console.log(JSON.stringify(redact(body), null, 2));
 }
 
+/**
+ * Set a client's display name (its alias in UniFi). The only write this CLI makes.
+ * Without --yes it prints what it would do and changes nothing.
+ */
+async function cmdRename(mac: string | undefined, name: string | undefined, yes: boolean) {
+  if (!mac || name === undefined) die('usage: unifi rename <mac> "<name>" [--yes]   (name "" clears it)');
+  const want = mac.toLowerCase();
+  const users = await legacy("rest/user");
+  const user = users.find((u) => String(u.mac).toLowerCase() === want);
+  if (!user) die(`no client with MAC ${mac} (see: unifi raw api/s/default/rest/user)`);
+  const current = String(user.name ?? "") || `(unnamed; hostname ${user.hostname ?? "-"})`;
+  if (String(user.name ?? "") === name) return console.log(`${mac}: already "${name}"`);
+  if (!yes) return console.log(`would rename ${mac}: ${current} → "${name}"   (rerun with --yes to apply)`);
+  await sendJson("PUT", await networkUrl(`api/s/${SITE}/rest/user/${user._id}`), { name });
+  const after = (await legacy("rest/user")).find((u) => String(u.mac).toLowerCase() === want);
+  if (String(after?.name ?? "") !== name) die(`PUT succeeded but the name reads "${after?.name ?? ""}"`);
+  console.log(`renamed ${mac}: ${current} → "${name}"`);
+}
+
 // ───────────────────────────── main ─────────────────────────────
 
 const HELP = `unifi — read-only UniFi Network CLI (cloud connector, GET only)
@@ -613,7 +648,11 @@ Commands:
   raw <path>            GET any path under the Network proxy (api/s/default/..., integration/v1/...)
                         or a Site Manager path (v1/hosts, v1/devices). Secrets are always redacted.
 
-Add --json to any command for machine-readable output.`;
+Writes (only with Michael's explicit OK):
+  rename <mac> "<name>" [--yes]
+                        set a client's display name; without --yes it only shows the change
+
+Add --json to any read command for machine-readable output.`;
 
 const [cmd, ...rest] = process.argv.slice(2);
 const json = rest.includes("--json");
@@ -640,6 +679,11 @@ switch (cmd) {
   case "hosts":
     await cmdHosts(rest.includes("--refresh"), json);
     break;
+  case "rename": {
+    const positional = rest.filter((a) => a !== "--yes" && a !== "--json");
+    await cmdRename(positional[0], positional[1], rest.includes("--yes"));
+    break;
+  }
   case "raw":
     await cmdRaw(rest.find((a) => !a.startsWith("--")));
     break;
