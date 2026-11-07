@@ -631,6 +631,55 @@ async function cmdRename(mac: string | undefined, name: string | undefined, yes:
   console.log(`renamed ${mac}: ${current} → "${name}"`);
 }
 
+const ipToInt = (ip: string): number => ip.split(".").reduce((acc, octet) => acc * 256 + Number(octet), 0);
+
+/** The LAN network whose subnet ("192.168.1.1/24") contains this IP. */
+function networkFor(ip: string, networks: Json[]): Json | undefined {
+  return networks.find((n) => {
+    const [gw, bits] = String(n.ip_subnet ?? "").split("/");
+    if (!gw || !bits) return false;
+    const mask = bits === "0" ? 0 : (0xffffffff << (32 - Number(bits))) >>> 0;
+    return ((ipToInt(gw) & mask) >>> 0) === ((ipToInt(ip) & mask) >>> 0);
+  });
+}
+
+/**
+ * Reserve an address for a client (UniFi's "Fixed IP"; a DHCP reservation, the device stays on DHCP).
+ * A write: only with Michael's OK, and nothing changes without --yes. "off" removes the reservation.
+ */
+async function cmdFixedIp(mac: string | undefined, ip: string | undefined, yes: boolean) {
+  if (!mac || !ip || !(ip === "off" || /^\d{1,3}(\.\d{1,3}){3}$/.test(ip)))
+    die("usage: unifi fixed-ip <mac> <ip|off> [--yes]");
+  const want = mac.toLowerCase();
+  const [users, networks] = await Promise.all([legacy("rest/user"), legacy("rest/networkconf")]);
+  const user = users.find((u) => String(u.mac).toLowerCase() === want);
+  if (!user) die(`no client with MAC ${mac}`);
+  const label = String(user.name || user.hostname || mac);
+  const current = user.use_fixedip ? `fixed ${user.fixed_ip}` : `dynamic (last ${user.last_ip ?? "?"})`;
+
+  let body: Json;
+  if (ip === "off") {
+    if (!user.use_fixedip) return console.log(`${label}: already dynamic`);
+    body = { use_fixedip: false };
+  } else {
+    if (user.use_fixedip && user.fixed_ip === ip) return console.log(`${label}: already fixed at ${ip}`);
+    const net = networkFor(ip, networks);
+    if (!net) die(`${ip} isn't in any LAN subnet`);
+    const taken = users.find((u) => u.use_fixedip && u.fixed_ip === ip && String(u.mac).toLowerCase() !== want);
+    if (taken) die(`${ip} is already reserved for ${taken.name || taken.hostname || taken.mac}`);
+    if (user.last_ip && user.last_ip !== ip)
+      console.log(`note: ${label} currently has ${user.last_ip}; it moves to ${ip} on its next DHCP renewal`);
+    body = { use_fixedip: true, fixed_ip: ip, network_id: net._id };
+  }
+  const target = ip === "off" ? "dynamic" : `fixed ${ip}`;
+  if (!yes) return console.log(`would set ${label}: ${current} → ${target}   (rerun with --yes to apply)`);
+  await sendJson("PUT", await networkUrl(`api/s/${SITE}/rest/user/${user._id}`), body);
+  const after = (await legacy("rest/user")).find((u) => String(u.mac).toLowerCase() === want);
+  const ok = ip === "off" ? !after?.use_fixedip : after?.use_fixedip === true && after?.fixed_ip === ip;
+  if (!ok) die(`PUT succeeded but the reservation reads use_fixedip=${after?.use_fixedip} fixed_ip=${after?.fixed_ip}`);
+  console.log(`set ${label}: ${current} → ${target}`);
+}
+
 const FINGERPRINT_CACHE = join(CACHE_DIR, "fingerprints.json");
 
 /** UniFi's device-type catalog (id → name), cached for a week. */
@@ -716,6 +765,8 @@ Writes (only with Michael's explicit OK):
                         set a client's display name; without --yes it only shows the change
   set-type <mac> <type-id> [--yes]
                         override the device type UniFi guessed (icon + model)
+  fixed-ip <mac> <ip|off> [--yes]
+                        reserve an address for a client (DHCP reservation; "off" removes it)
   types "<search>"      search UniFi's device-type catalog for a type id (read-only)
 
 Add --json to any read command for machine-readable output.`;
@@ -748,6 +799,11 @@ switch (cmd) {
   case "rename": {
     const positional = rest.filter((a) => a !== "--yes" && a !== "--json");
     await cmdRename(positional[0], positional[1], rest.includes("--yes"));
+    break;
+  }
+  case "fixed-ip": {
+    const positional = rest.filter((a) => a !== "--yes" && a !== "--json");
+    await cmdFixedIp(positional[0], positional[1], rest.includes("--yes"));
     break;
   }
   case "types":
