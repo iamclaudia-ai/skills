@@ -679,7 +679,11 @@ async function cmdSetType(mac: string | undefined, typeId: string | undefined, y
   if (!user) die(`no client with MAC ${mac}`);
   const label = String(user.name || user.hostname || mac);
   const before = await currentType(want);
-  const beforeName = before?.id !== undefined ? (types[String(before.id)] ?? `#${before.id}`) : "(unknown, client offline)";
+  const beforeName = !before
+    ? "(unknown, client offline)"
+    : before.id === undefined
+      ? "(no guess)"
+      : (types[String(before.id)] ?? `#${before.id}`);
   if (!yes) return console.log(`would set ${label}: ${beforeName} → ${typeName} (#${typeId})   (rerun with --yes to apply)`);
   // rest/user accepts dev_id_override but ignores it; the v2 station endpoint is what the app uses.
   const saved = (await sendJson("PUT", await networkUrl(`v2/api/site/default/station/${want}/fingerprint_override`), {
