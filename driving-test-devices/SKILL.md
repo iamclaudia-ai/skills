@@ -80,6 +80,7 @@ WDA_DEVICE=ipad python3 $W type 'hello'
 WDA_DEVICE=ipad python3 $W swipe 400 900 400 300
 WDA_DEVICE=ipad python3 $W drag 812 1172 520 760   # press, hold 600 ms, move: resize/move a window
 WDA_DEVICE=ipad python3 $W rotate landscape
+WDA_DEVICE=ipad python3 $W home               # Home screen: sends the frontmost app to the background
 WDA_DEVICE=ipad python3 $W shot ./tmp/shots/x.png
 ```
 
@@ -124,15 +125,22 @@ Checked 2026-11-07 for claudia-scan#11 (camera interruptions):
   holds, then moves; a plain `swipe` moves at once and does nothing to a window).
 - **Move** a window by its title bar: `drag` from the bar to the new spot.
 - **Window controls**: tap the window's ••• at its top left to show the traffic lights; **hold** the
-  green one (`hold x y 900`) for the tile menu, then `taplabel` one of Left, Right, Top, Bottom,
-  Fill, "Left and Right", "Arrange thirds". Yellow minimizes. Coordinates from a `shot`: the
-  controls are not always in `tree`.
+  green one (`hold x y 900`) for the tile menu. On iPadOS 27.2 the menu is **icons with no labels**
+  (`taplabel` finds nothing), so tap by coordinates from a `shot`: row *Move & Resize* (left, right,
+  top, bottom half) and row *Fill & Arrange* (Fill, Left and Right, thirds, quarters). Yellow
+  minimizes. The controls are not always in `tree`.
+- **Left and Right from a lone window** parks it on one side and shows the Home screen to pick the
+  other app (tap its dock icon). This brings a backgrounded app straight back *into* a split.
 - A second app: tap its dock icon (it opens at its last frame, often maximized), or `wda.py launch`.
 - **A full-screen modal hides the window controls**, and an app's ✕ usually sits where they would
   be: never tap there blind. Bring a second window forward instead.
-- iPadOS gives the camera only to an app alone on screen: two windows visible, even one exactly
-  covering the other, interrupts the camera (`videoDeviceNotAvailableWithMultipleForegroundApps`);
-  Fill or minimizing the other brings it back.
+- iPadOS gives the camera only to an app alone on screen: two windows visible side by side, or one
+  window partly over the other, interrupts the camera
+  (`videoDeviceNotAvailableWithMultipleForegroundApps`). Fill, minimizing the other, or bringing a
+  **maximized** window to the front (it covers the other completely) brings it back: tapping a
+  maximized app behind a tiled one raises it and ends the interruption (seen twice, 2026-11-08).
+- **A tap on a window that is not in front only raises it**, and with a maximized window that means
+  it covers everything. To act inside one app while another stays visible, tile them first.
 
 ## Android: adb
 
