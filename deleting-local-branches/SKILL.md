@@ -76,6 +76,38 @@ Each deletion is appended (branch, SHA, reason, time, repo) to the repo's
    that a skill of mine creates (`deps/*`, `review/*`, worktree branches). Michael's
    branches go through `merged` (merged PRs only) or wait for him.
 
+## Tidying worktrees (before the branches)
+
+A branch checked out in a worktree can't be deleted, and a worktree's **notes live in
+git-ignored `tmp/` folders**, which `git status` never shows and `git worktree remove` silently
+deletes (a `--delete-branch` merge once took a worktree's notes with it). So tidy worktrees with
+`scripts/tidy-worktrees.sh`, run directly with zsh (not through the skills runner):
+
+```bash
+S=~/.claude/skills/deleting-local-branches/scripts/tidy-worktrees.sh
+zsh $S survey <main checkout> <owner/repo>             # branch, PR state, changes, tmp notes
+zsh $S remove <main checkout> <worktree>...            # dry run: lists what it would archive
+zsh $S remove --commit <main checkout> <worktree>...   # archive to <main>/tmp/worktree-archive/, cmp, remove
+```
+
+Remove only worktrees whose PR is **merged or closed** and that have no tracked changes (the
+script skips those anyway). Leave a worktree with an open PR: another session is working in it.
+Then delete the branches: `merged` for merged PRs, `delete` for the rest. **Pre-PR branches**
+("No PR found") are usually all reachable from `main`, and `delete` without `--force` handles
+those. For the few it skips, compare *content*, not commits, before forcing: is the feature on
+`main` (`git grep`), did its PR merge under another branch name, is its only unique commit a
+local merge? Keep spikes and anything really unique, and name them to Michael.
+
+Remote branches of merged PRs go in **one** `git push origin --delete b1 b2 …`. A push made only
+of deletions skips nutwords' pre-push hook. Afterwards: `git fetch --prune`.
+
+**Guard traps on the way** (nutwords tidy, 2026-11-08): `find … -delete` is blocked; remove
+empty leftover folders with `rmdir`, which only ever removes empty ones. Never pipe `gh-stack`
+into `tail`/`head`. Writing inside `.git/` is blocked, so empty gh-stack stack shells (listed
+with `"branches": []` after `delete --keep-branch`) stay unless Michael moves
+`.git/.gh-stack/active/<name>.json` to `archived/` himself. They are harmless. The zsh glob
+`packages/*/tmp` aborts the command when nothing matches: `setopt nullglob` (the script does).
+
 ## Notes
 
 - Remote branches are out of scope. `git push origin --delete <branch>` is allowed
