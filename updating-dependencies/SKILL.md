@@ -180,6 +180,10 @@ versions. Verify, and note the refresh in a PR comment.
   worktree, where `add` + `update-prs` adopt the numbers anyway. `submit`
   can also miss writing `ghstack-pr` for the last sibling it creates, so check
   `git config --get-regexp 'branch\.deps/.*ghstack-pr'` before registering.
+  Even with that config present, `add` can still register the last sibling
+  as `"pr": null` (nutwords sweep 2026-11-08: `ghstack-pr 270` was set and
+  #270 still came up null after `add`). Same treatment: report it, don't
+  repair it in his checkout.
 - **How to land it**, for the final message: one line saying the PRs land one
   at a time, safe batch first, and that you can do it when he asks (step 6).
   If he merges on GitHub himself, `gh-stack sync` afterwards moves the
@@ -265,6 +269,20 @@ version, stop and say so rather than landing by hand.
 - **Formatter or linter bumps** reformat files. Keep that diff in its own
   commit, so the review stays readable.
 - **Monorepos with catalogs** (Bun): bump the catalog entry, not each workspace.
+- **Bun workspaces without catalogs: a root `bun update` updates only the
+  root's own dependencies.** The workspaces' direct dependencies (and the
+  transitive security fixes under them) stay put. Run `bun update -r` as well
+  (nutwords 2026-11-08: the root run moved 2 direct deps, `-r` moved 20 more,
+  including the Sentry line that fixed glob/minimatch).
+- **A security fix only hours short of the window:** compare its exact publish
+  time (`npm view <pkg> time --json`) with now. If it clears within the
+  session, wait and let `bun update` take it normally rather than adding an
+  exemption. Say so in the PR, because the report will have listed it as cooling.
+- **A safe update that breaks the typecheck because of a type we lean on
+  structurally** (nutwords: `Database = PgliteDatabase`, with the Neon client
+  passed in; PGlite 0.5.5 added `rowCount?: number`): hold it back with an
+  **exact** pin (`bun add -d pkg@<old>` writes one), or next week's in-range
+  update re-breaks it. File the real fix as an issue, link it, and lift the pin there.
 
 ## Notes
 
