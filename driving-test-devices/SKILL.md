@@ -253,6 +253,16 @@ What is specific to Michael's desk:
   dcg blocks `> $VAR/x.png`.
 - A tap while a list or modal is still animating lands on whatever is underneath. Screenshot
   first, then tap.
+- **Never chain taps across a screen change in an app on production data.** One tap, then a
+  `shot` or `tree`, then the next. On 2026-11-08 a Back tap on the iPad didn't take, and the next
+  tap (meant for a room tile on the grid) answered a survey question in the room still on screen;
+  it had to be set back by hand. Prefer `taplabel` for navigation: it fails loudly when the label
+  isn't there instead of tapping whatever is.
+- **A quick WDA `tap` can miss a React Native Pressable inside a ScrollView on a real iPad**, as
+  AXe does on the Simulator: the first `tap` on the Task List's banner did nothing, `hold x y 120`
+  worked (2026-11-08). If a tap seems ignored, check with `tree` that it hit the element, then
+  `hold` ~150 ms rather than assuming the app is broken. `adb shell input tap` didn't have this
+  problem.
 - Taps can silently stop reaching a Simulator app after the system Save Password sheet: reboot it.
 - **The Expo dev menu's floating gear button covers the header's right edge** on an Android
   DEV build (a grey/blue circle over the ⋮). A tap there opens the dev menu instead of the
