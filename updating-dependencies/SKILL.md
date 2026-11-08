@@ -238,7 +238,23 @@ version, stop and say so rather than landing by hand.
       --frozen-lockfile`. A text-merged lockfile that no longer matches the
       manifests fails here.
    2. Run the full verify (step 2.4), plus the step-1 targeted check.
-   3. `gh-stack merge --base`.
+   3. `gh-stack merge --base`. Run it as `GH_STACK_YES=1 timeout 300
+      gh-stack merge --base > <log> 2>&1 < /dev/null`, from a fresh Bash call.
+      Three times on 2026-11-08, the call made right after a long verify hung
+      until the tool timeout and the log file was never created: the tmux
+      wrapper stuck before the command started. When that happens, check
+      `gh pr view <n> --json state` (it was still open each time) and run it
+      again. "Could not sync main" at the end is expected: `main` is checked
+      out in Michael's working copy.
+   4. **A UI dependency (layout, components, CSS) gets a live check before
+      it merges**, through the real gateway, not a standalone harness: merge,
+      `anima watchdog reload`, then DOMINATRIX `eval` on the page for element
+      rects and `document.scrollingElement.scrollHeight`, plus a screenshot.
+      Be ready to revert in one commit. dockview v8 (#91) passed a harness
+      and every test, then broke `/chat` live (the SPA bundle drops CSS that
+      isn't imported through `packages/ui/src/styles/index.css`, plus an
+      overlay and theme regression), and was reverted the same hour (anima
+      #150).
 5. **Expect a lockfile conflict in `sync` from the second sibling on.**
    1. `git checkout --ours bun.lock` (during a rebase, *ours* is the new base)
       and `bun install` to re-resolve this PR's manifest changes on top.
