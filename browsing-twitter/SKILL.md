@@ -74,6 +74,16 @@ bun $S/bookmarks-show.ts --limit 50      # read, free; --offset N, --grep <regex
 - Reading for ideas: open the links and threads behind the promising ones (`thread-up.sh`, WebFetch); the
   bookmarked tweet is often just a headline. Ideas worth doing become issues in the relevant repo.
   Digests go in `~/.anima/x-bookmarks/digests/` (first one: `2026-11-newest-50.md`, a model for the format).
+- **Media is archived locally** in `media/<tweet id>/` (photos at `?name=orig`, videos as MP4 ≤ ~2.5 Mbps,
+  GIFs, and the quoted tweet's media as `q1-…`), with a `manifest.json` (status, files, sizes, durations). The
+  sync saves new bookmarks' media itself (`--no-media` skips); `bun $S/bookmarks-media.ts` catches up
+  (`--ids`, `--limit`, `--quality best`, `--refresh`). Free: URLs from fxtwitter, files from X's CDN.
+  The API's `media.fields` only give a video's thumbnail; fxtwitter gives the MP4 variants. A tweet fxtwitter
+  can't see (deleted, protected) falls back to the photo URLs the sync stored (status `partial`).
+  `bookmarks-show.ts` prints the local paths. To watch a saved video, use the `watching-videos` skill.
+- **The API serves only the newest ~800 bookmarks** (X's 2022 announcement; staff confirmed on the dev forum).
+  The full walk on 2026-11-07 got 833, back to 2018, so the cap is at least that loose; anything older than
+  the oldest archived one can't be fetched by API. Records stay in the archive after X stops serving them.
 - **X articles** (`links: https://x.com/i/article/…`, tweet text empty) are free through fxtwitter:
   `curl -s https://api.fxtwitter.com/status/<tweet id> | jq -r '.tweet.article.title, (.tweet.article.content.blocks | map(.text) | join("\n"))'`.
 - **Medium posts** return 403 to WebFetch (scribe.rip 404s, freedium has a bad cert). The author's RSS feed has the

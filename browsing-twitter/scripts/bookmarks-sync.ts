@@ -2,7 +2,7 @@
 /**
  * Sync Michael's X bookmarks into a local archive, newest first, stopping at the first one already saved.
  *
- *   bun bookmarks-sync.ts [--dry-run] [--max-pages N]
+ *   bun bookmarks-sync.ts [--dry-run] [--max-pages N] [--full] [--no-media]
  *
  * Auth: OAuth 2.0 user token from xurl (`xurl token` refreshes and persists it). Cost: $0.005 per post
  * returned, so a page of 100 is $0.50 even if only a few are new.
@@ -10,6 +10,7 @@
  * Archive (X_BOOKMARKS_DIR, default ~/.anima/x-bookmarks):
  *   bookmarks.jsonl  one bookmark per line, in bookmark order (most recently bookmarked first)
  *   raw/             every API page as returned, kept so nothing is lost if the format changes
+ *   media/           photos and videos, saved by bookmarks-media.ts after each sync
  *
  * Bookmarks come back in the order they were bookmarked, not by tweet id, so "already saved" is a
  * set lookup, never an id comparison (an old tweet bookmarked today has a low id).
@@ -198,6 +199,15 @@ async function main(): Promise<void> {
     // its record, after the feed. Incremental: new ones go on top.
     const rest = existing.filter((b) => !inFeed.has(b.id));
     writeArchive(full ? [...feed, ...rest] : [...feed, ...existing]);
+  }
+  // Save the new bookmarks' photos and videos too (free, via fxtwitter), so they survive deletion.
+  if (!dryRun && !args.includes("--no-media")) {
+    const { pendingMedia, archiveMedia } = await import("./bookmarks-media");
+    const todo = pendingMedia(readArchive());
+    if (todo.length) {
+      const { bytes, tally } = await archiveMedia(todo);
+      console.log(`Media: ${todo.length} bookmark(s), ${(bytes / 1e6).toFixed(1)} MB saved ${JSON.stringify(tally)}.`);
+    }
   }
   const total = full ? new Set([...existing.map((b) => b.id), ...seen]).size : existing.length + fresh;
   console.log(

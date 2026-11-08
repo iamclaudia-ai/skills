@@ -4,6 +4,8 @@
  *
  *   bun bookmarks-show.ts [--limit 50] [--offset 0] [--grep <regex>]
  */
+import { join } from "node:path";
+import { MEDIA_DIR, readManifest } from "./bookmarks-media";
 import { readArchive } from "./bookmarks-sync";
 
 const args = process.argv.slice(2);
@@ -28,7 +30,9 @@ picked.forEach((b, i) => {
   console.log(b.text.replace(/https:\/\/t\.co\/\w+/g, "").trim());
   if (b.quoted) console.log(`> quoting @${b.quoted.author ?? "?"}: ${b.quoted.text.replace(/\n+/g, " ").slice(0, 400)}`);
   if (b.links.length) console.log(`links: ${b.links.join(" ")}`);
-  if (b.media.length) console.log(`media: ${b.media.map((x) => `${x.type} ${x.url}`).join(" ")}`);
+  const saved = readManifest(b.id);
+  if (saved?.files.length) console.log(`saved: ${saved.files.map((f) => join(MEDIA_DIR, b.id, f.file)).join(" ")}`);
+  else if (b.media.length) console.log(`media: ${b.media.map((x) => `${x.type} ${x.url}`).join(" ")}`);
   console.log();
 });
 console.error(`${picked.length} shown (${offset + 1}–${offset + picked.length} of ${all.length}${grep ? ", filtered" : ""})`);
