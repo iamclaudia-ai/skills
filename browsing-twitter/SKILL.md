@@ -74,6 +74,11 @@ bun $S/bookmarks-show.ts --limit 50      # read, free; --offset N, --grep <regex
 - Reading for ideas: open the links and threads behind the promising ones (`thread-up.sh`, WebFetch); the
   bookmarked tweet is often just a headline. Ideas worth doing become issues in the relevant repo.
   Digests go in `~/.anima/x-bookmarks/digests/` (first one: `2026-11-newest-50.md`, a model for the format).
+- **Weekly digest (scheduled).** Scheduler task "Weekly X bookmarks digest" (vesuvius, Sundays 9:00,
+  id `461f3321…`) runs `scripts/bookmarks-weekly.sh`: sync + media, then, if anything is newer than
+  `digests/LAST`, a yolo session titled "X bookmarks digest <date>" follows `references/weekly-digest.md` (digest,
+  issues, `LAST` moved forward, a text to Michael). Log: `~/.anima/x-bookmarks/weekly.log`; `--dry-run` reports only.
+  `bookmarks-show.ts --until <id>` shows just the bookmarks made after that one (`--count` for the number).
 - **Media is archived locally** in `media/<tweet id>/` (photos at `?name=orig`, videos as MP4 ≤ ~2.5 Mbps,
   GIFs, and the quoted tweet's media as `q1-…`), with a `manifest.json` (status, files, sizes, durations). The
   sync saves new bookmarks' media itself (`--no-media` skips); `bun $S/bookmarks-media.ts` catches up

@@ -2,7 +2,10 @@
 /**
  * Print bookmarks from the archive for reading, most recently bookmarked first. Free (no API calls).
  *
- *   bun bookmarks-show.ts [--limit 50] [--offset 0] [--grep <regex>]
+ *   bun bookmarks-show.ts [--limit 50] [--offset 0] [--grep <regex>] [--until <id>] [--count]
+ *
+ * --until <id>: only the bookmarks made after that one (it and everything older are left out); the weekly
+ * digest passes the last digested id from digests/LAST. --count prints just how many would be shown.
  */
 import { join } from "node:path";
 import { MEDIA_DIR, readManifest } from "./bookmarks-media";
@@ -17,7 +20,15 @@ const limit = Number(opt("--limit", "50"));
 const offset = Number(opt("--offset", "0"));
 const grep = args.includes("--grep") ? new RegExp(opt("--grep", ""), "i") : null;
 
-const all = readArchive();
+const archive = readArchive();
+const untilId = args.includes("--until") ? opt("--until", "") : null;
+const cut = untilId ? archive.findIndex((b) => b.id === untilId) : -1;
+if (untilId && cut < 0) throw new Error(`--until ${untilId}: not in the archive`);
+const all = untilId ? archive.slice(0, cut) : archive;
+if (args.includes("--count")) {
+  console.log((grep ? all.filter((b) => grep.test(`${b.author} ${b.text} ${b.links.join(" ")}`)) : all).length);
+  process.exit(0);
+}
 const picked = (grep ? all.filter((b) => grep.test(`${b.author} ${b.text} ${b.links.join(" ")}`)) : all).slice(
   offset,
   offset + limit,
