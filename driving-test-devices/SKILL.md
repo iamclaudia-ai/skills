@@ -164,6 +164,14 @@ adb shell settings put system user_rotation 1                               # 0,
 adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml ./tmp/ui.xml   # element tree
 ```
 
+**Dark mode for a screenshot:** `adb shell cmd uimode night yes` (and `night` alone prints the
+current mode). Apps that follow the system switch live. Put it back afterwards (`night no` on
+the Pixel). This is quicker than going through each app's own Appearance setting.
+
+**Reading a color off a screenshot** (checking a hairline is the right token, for example):
+the Mac's python has no Pillow, so `uv run --quiet --with pillow python -I -c "..."` and
+`Image.open(p).convert('RGB').getpixel((x, y))` down a column through the line.
+
 **A tablet width on a phone** (no Android tablet on hand): lower the density so the window is
 wider in dp. On the Pixel 7a (1080 px wide), `adb shell wm density 240` gives 720 dp and
 `adb shell wm density 180` gives 960 dp (past Evolution's 900-pt room sidebar breakpoint).
@@ -246,6 +254,17 @@ What is specific to Michael's desk:
 - A tap while a list or modal is still animating lands on whatever is underneath. Screenshot
   first, then tap.
 - Taps can silently stop reaching a Simulator app after the system Save Password sheet: reboot it.
+- **The Expo dev menu's floating gear button covers the header's right edge** on an Android
+  DEV build (a grey/blue circle over the ⋮). A tap there opens the dev menu instead of the
+  app's menu. Close the dev menu (tap the dimmed area), then drag the button away:
+  `adb shell input swipe 970 228 970 1500 600`. It stays where it is dropped.
+- **`sips -c H W --cropOffset Y X` crops from the CENTRE**: it ignores the offset. Crop PR
+  images with Pillow (`im.crop((0, 0, w, h))`, via `uv run --with pillow`) and look at the
+  result before attaching it.
+- **An Expo DEV app on iOS falls back to "Finding Dev Servers" after Metro restarts.** Point
+  it back without touching it: `xcrun devicectl device process launch --device <UDID>
+  --terminate-existing --payload-url "<scheme>://expo-development-client/?url=http%3A%2F%2F<host>%3A8081"
+  <bundle-id>` (Evolution DEV: scheme `evolutionmobile-dev`, host `vesuvius`).
 
 ## Test station (being built)
 
