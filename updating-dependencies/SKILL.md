@@ -78,16 +78,27 @@ explain it in the PR body. Follow the repo's own CLAUDE.md conventions.
 1. Read the report (`.md` for you, `.json` for exact values).
 2. `git -C <repo> fetch origin`, and `export GH_STACK_YES=1` (gh-stack's
    non-interactive mode).
-3. **One worktree for the whole run.** gh-stack keeps its metadata in the
+3. **Look for open PRs that already make these bumps.** The report lists only
+   `deps/*` branches, so a hand-made bump (another session's `chore/expo-…`
+   branch, say) is invisible to it. Run `gh pr list --state open --json
+   number,title,headRefName,files --jq '.[] | select(any(.files[];
+   .path|test("package.json|lock"))) | "\(.number) \(.headRefName) \(.title)"'`
+   and read each hit's `package.json` diff. Leave out of the safe batch
+   anything an open PR already covers, and say so in the body. If an open PR
+   covers the whole safe list, open no safe PR at all, and base the breaking
+   PRs on the default branch (`gh-stack init --parent <default>`). On
+   2026-11-08 evolution-mobile's sweep opened #407, an exact duplicate of
+   #394 from the night before, closed it, and had to rebase #408 off it.
+4. **One worktree for the whole run.** gh-stack keeps its metadata in the
    worktree's own git dir (`.git/worktrees/<name>/.gh-stack`), so every branch
    of the stack has to live in the same worktree. Switch branches inside it.
-4. Safe branch: if the report lists an open `deps/sweep-*` PR, reuse its
+5. Safe branch: if the report lists an open `deps/sweep-*` PR, reuse its
    branch: `git -C <repo> worktree add <repo>.worktrees/deps-<date>
    <branch>`, then `gh-stack add` and `gh-stack sync` to move it onto the
    default branch. Otherwise create `deps/sweep-<date>`:
    `git -C <repo> worktree add <repo>.worktrees/deps-<date> -b deps/sweep-<date> origin/<default>`,
    then `gh-stack init --parent <default>` inside it.
-5. Install in the worktree with the repo's package manager (`bun install`,
+6. Install in the worktree with the repo's package manager (`bun install`,
    `pnpm install --frozen-lockfile`, `npm ci`). It must pass before you change
    anything. If it doesn't, stop and report why in your final message.
 
@@ -262,6 +273,20 @@ version, stop and say so rather than landing by hand.
   (`expo` group): `npx expo install expo@^<line>` then `npx expo install --fix`
   and `npx expo-doctor`. Put `jest-expo` in the same PR even though it has its
   own group in the report.
+  - In the safe batch, finish with `CI=1 npx expo install --check`. A patch
+    that the report calls safe can still be one Expo's table pins exactly
+    (`react-native-worklets` 0.13.0 on SDK 58), and taking it would need an
+    `expo.install.exclude` entry. Hold it back for a person to decide.
+  - Run `expo-doctor` and `expo install` with `CI=1`. Without it,
+    `npx expo-doctor` sat for over 5 minutes in the unattended run.
+  - `--fix` writes `~` ranges back on packages the repo pins exactly (patched
+    ones in evolution-mobile): pin them again, then regenerate their patches
+    under the new version.
+  - Diff the lockfile for packages that were **added**, not just bumped. In
+    evolution-mobile, `react-native-nitro-modules` 0.37.1 → 0.37.2 added
+    `nitro-core`, a new package with its own native sources, in a patch
+    release. A native restructure under the camera stack was held for a
+    device pass.
 - **`@types/vscode`** must not exceed the `engines.vscode` range, or packaging
   the extension fails. Hold it back and say why.
 - **`@types/node`** should match the Node major the project runs on
