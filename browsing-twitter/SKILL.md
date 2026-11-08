@@ -15,7 +15,7 @@ URL (any `…/status/<id>` form, query string fine) or a bare id. Work files go 
 | One tweet, or an author's own thread (given its **last** tweet)  | `thread-up.sh <url>`                                    | free             |
 | Everyone's replies, the full conversation                        | `conversation.sh <url> tmp/x/<name>.json`, then `print-conversation.sh` | $0.005 per post |
 | Anything else in API v2 (user, timeline, search, a tweet's fields) | `x-get.sh '<path?query>'`                             | $0.005–0.01 per item |
-| Bookmarks, likes, posting, acting as @kiliman                   | not set up: needs OAuth 2.0 user auth (see below)       |                  |
+| Bookmarks, likes, anything as @kiliman (user context)           | `xurl '/2/users/14352244/bookmarks?…'` (see below)      | $0.001–0.005 per item |
 
 **Free first.** `thread-up.sh` walks `replying_to_status` upward through `api.fxtwitter.com`, printing text,
 counts, media URLs and quotes. A thread link usually points at its first tweet, which has no parent, so the walk
@@ -49,10 +49,32 @@ Screenshots often carry most of a thread's content: look at them before giving a
 - Credits: console.x.com → Credits (account 1270720339383738368). Prepaid; at 2026-11-07 the balance was $43.
 - Prices (2026, pay-per-use): post read $0.005, user read $0.010, owned reads $0.001, post create $0.015
   ($0.20 with a URL). Billed per item returned, not per call.
-- **OAuth 2.0 user auth is not set up.** Bookmarks and acting as him need it: regenerate the Client Secret in the
-  app's Keys & Tokens, add `http://localhost:8080/callback` as the callback URL, then use X's official CLI
-  `xurl` (`brew install --cask xdevplatform/tap/xurl`, `xurl auth oauth2`, Michael approves in the browser).
-  `xurl mcp https://api.x.com/mcp` then exposes X's hosted MCP (posts, search, timelines, bookmarks).
+## User context: bookmarks and acting as @kiliman (xurl)
+
+Bookmarks (and likes, DMs, posting) **refuse the app-only bearer token** ("Authenticating with OAuth 2.0
+Application-Only is forbidden for this endpoint"). They need a user token. X's official CLI `xurl` (installed on
+vesuvius, `brew install --cask xdevplatform/tap/xurl`) holds one for app `kiliman`, user `kiliman`
+(id `14352244`), in `~/.xurl/auth.yml`. xurl is a curl for the X API: there are no bookmark commands, you call
+the endpoint.
+
+```bash
+xurl /2/users/me                                                     # who am I
+xurl '/2/users/14352244/bookmarks?max_results=20&tweet.fields=created_at,author_id&expansions=author_id&user.fields=username'
+TOKEN=$(xurl token)   # a valid user access token for curl; refreshes and saves if expired
+```
+
+- **OAuth 2.0 user tokens expire in 2 hours, and every refresh rotates the refresh token** (the old one dies).
+  Only xurl's store stays current: `xurl token` and every `xurl` call refresh and persist it. Never refresh from
+  a static copy, and never put the live tokens back into 1Password.
+- **If xurl's token is ever lost:** generate a new access + refresh token on the app's Keys & Tokens page
+  (OAuth 2.0 → Access Token → Generate), export it as `X_OA2_ACCESS_TOKEN`/`X_OA2_REFRESH_TOKEN`, and run
+  `bun scripts/seed-xurl.ts` (needs the app registered first with `xurl auth apps add kiliman …`; sets expiry 0
+  so the next call refreshes). Or log in:
+  `xurl auth oauth2 --app kiliman kiliman` (callback `http://localhost:8080/callback` must be registered on the app).
+- `xurl auth status` shows what's configured. **It is the only safe way to inspect auth.yml**: never cat it or
+  `sed`-mask it (a BSD sed mask once failed and printed the secrets).
+- `xurl mcp https://api.x.com/mcp` exposes X's hosted MCP (posts, search, timelines, bookmarks) over the same auth.
+- Writes as Michael (bookmark add/remove, posts, likes) only with his explicit say-so.
 
 ## Traps
 
