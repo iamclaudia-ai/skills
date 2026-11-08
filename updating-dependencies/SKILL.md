@@ -89,6 +89,10 @@ explain it in the PR body. Follow the repo's own CLAUDE.md conventions.
    PRs on the default branch (`gh-stack init --parent <default>`). On
    2026-11-08 evolution-mobile's sweep opened #407, an exact duplicate of
    #394 from the night before, closed it, and had to rebase #408 off it.
+   This is a courtesy check, not a gate: deps work normally merges before
+   Sunday, and Michael says an occasional duplicate is no big deal. Don't
+   spend long on fuzzy overlaps; when unsure, open the PR and name the other
+   one in the body.
 4. **One worktree for the whole run.** gh-stack keeps its metadata in the
    worktree's own git dir (`.git/worktrees/<name>/.gh-stack`), so every branch
    of the stack has to live in the same worktree. Switch branches inside it.
@@ -276,7 +280,8 @@ version, stop and say so rather than landing by hand.
   - In the safe batch, finish with `CI=1 npx expo install --check`. A patch
     that the report calls safe can still be one Expo's table pins exactly
     (`react-native-worklets` 0.13.0 on SDK 58), and taking it would need an
-    `expo.install.exclude` entry. Hold it back for a person to decide.
+    `expo.install.exclude` entry. Hold it back until Expo's table moves
+    (in evolution-mobile that is policy; see below).
   - Run `expo-doctor` and `expo install` with `CI=1`. Without it,
     `npx expo-doctor` sat for over 5 minutes in the unattended run.
   - `--fix` writes `~` ranges back on packages the repo pins exactly (patched
@@ -287,6 +292,27 @@ version, stop and say so rather than landing by hand.
     `nitro-core`, a new package with its own native sources, in a patch
     release. A native restructure under the camera stack was held for a
     device pass.
+- **evolution-mobile: the root packages drive everything under them**
+  (Michael, 2026-11-08). It is a React Native app, and the big packages
+  (Expo, React Native, VisionCamera) are tested and supported with the
+  versions they bring, so don't run ahead of them:
+  - **Track Expo.** Packages in Expo's version table move when Expo moves
+    them (`npx expo install --fix`), not before. React and react-dom stay at
+    the version React Native's renderer ships with: never bump them alone,
+    even for a patch. The same goes for table-pinned packages like
+    `react-native-worklets`. The seven `expo.install.exclude` packages are
+    the deliberate exceptions, and they move as direct dependencies.
+  - **Companions move with their parent.** `react-native-nitro-modules` and
+    `react-native-nitro-image` move only with a `react-native-vision-camera`
+    bump, at the versions it asks for (and claudia-scan with it, for CameraX;
+    see the repo's CLAUDE.md).
+  - **Transitive dependencies are left to their parents**, unless the update
+    fixes a security issue or a critical bug that reaches us. No overrides to
+    bump them otherwise. Report anything held this way under "Held back" so
+    it's on record, but it needs no decision from Michael.
+  - Direct dependencies outside those groups update normally. In a native
+    release (0.10) a native bump can merge when approved.
+  - Dev tooling still cooling in the window just waits for next week's sweep.
 - **`@types/vscode`** must not exceed the `engines.vscode` range, or packaging
   the extension fails. Hold it back and say why.
 - **`@types/node`** should match the Node major the project runs on
