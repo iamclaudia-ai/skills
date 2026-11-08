@@ -73,6 +73,13 @@ bun $S/bookmarks-show.ts --limit 50      # read, free; --offset N, --grep <regex
   with `bookmarks-import-xcli.ts`. Don't use x-cli.
 - Reading for ideas: open the links and threads behind the promising ones (`thread-up.sh`, WebFetch); the
   bookmarked tweet is often just a headline. Ideas worth doing become issues in the relevant repo.
+  Digests go in `~/.anima/x-bookmarks/digests/` (first one: `2026-11-newest-50.md`, a model for the format).
+- **X articles** (`links: https://x.com/i/article/…`, tweet text empty) are free through fxtwitter:
+  `curl -s https://api.fxtwitter.com/status/<tweet id> | jq -r '.tweet.article.title, (.tweet.article.content.blocks | map(.text) | join("\n"))'`.
+- **Medium posts** return 403 to WebFetch (scribe.rip 404s, freedium has a bad cert). The author's RSS feed has the
+  full text: `curl -sL -A "Mozilla/5.0" https://<author>.medium.com/feed`, then take the item's `<content:encoded>`
+  CDATA and strip the tags (`python3 -I`, `re` + `html.unescape`).
+- Videos can't be watched; the tweet text, thumbnails and replies are all you get. Say so rather than guess.
 
 ## User context: bookmarks and acting as @kiliman (xurl)
 
