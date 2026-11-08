@@ -171,7 +171,15 @@ versions. Verify, and note the refresh in a PR comment.
   refuses with "has no PR", and `sync` can't see the safe batch merge, so it
   replays its squashed commits. If you see one, say so in the final message:
   the fix is `gh-stack update-prs` run from a branch of that stack, which you
-  must not check out in his working copy.
+  must not check out in his working copy. **Never try to repair it with
+  `gh-stack delete --keep-branch` + `add`** in his checkout: `delete` wipes the
+  branch's `ghstack-pr` config, `add` drops PR numbers that `update-prs`
+  adopted elsewhere, and every cycle leaves an empty stack plus a `-2`/`-3`
+  suffixed copy behind (gh-stack 0.19.9, kiliman/gh-stack#67; anima sweep
+  2026-11-08). Report the `null` and move on: step 6 lands from a fresh
+  worktree, where `add` + `update-prs` adopt the numbers anyway. `submit`
+  can also miss writing `ghstack-pr` for the last sibling it creates, so check
+  `git config --get-regexp 'branch\.deps/.*ghstack-pr'` before registering.
 - **How to land it**, for the final message: one line saying the PRs land one
   at a time, safe batch first, and that you can do it when he asks (step 6).
   If he merges on GitHub himself, `gh-stack sync` afterwards moves the
@@ -233,6 +241,19 @@ version, stop and say so rather than landing by hand.
 
 ## Ecosystem notes
 
+- **anima's root `bun run build` is not an unattended check.** It runs
+  `bun run --filter '*' build`, which includes `xcodebuild` (menubar),
+  `cargo tauri build` (desktop) and the watchdog's codesign step; it hung past
+  10 minutes in the 2026-11-08 sweep. Build the JS workspaces one by one
+  instead (`clients/{code-server-bridge,dominatrix,vscode}`, `packages/{ui,shared,cli,gateway}`,
+  every `extensions/*` with a `build` script), and run `bun run prepush` by
+  hand: `gh-stack submit` pushes don't show the hook's output. The root
+  typecheck skips `clients/dominatrix` (#144): run its own `bun run typecheck`
+  when a change touches it.
+- **Canary tests that pin a dependency's output** (anima's
+  `extensions/dominatrix/src/transpile.test.ts` checks Babel's `for..of`
+  helper) are meant to fail on a minor bump. Fix the patch so it matches
+  the new output's shape, rather than holding the update back.
 - **Expo:** never bump `expo-*` packages one by one. An SDK upgrade is one PR
   (`expo` group): `npx expo install expo@^<line>` then `npx expo install --fix`
   and `npx expo-doctor`. Put `jest-expo` in the same PR even though it has its
