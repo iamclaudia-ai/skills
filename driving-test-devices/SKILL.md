@@ -1,6 +1,6 @@
 ---
 name: driving-test-devices
-description: "MUST be used when installing, launching, tapping, screenshotting, rotating or otherwise driving a real phone or tablet (iPhone, iPad, Pixel, Galaxy, BOOX) or a simulator/emulator from the Mac without a human touching it. Covers the device roster and which ones are safe to drive, devicectl (install, launch with arguments, console, screenshot, orientation), WebDriverAgent taps/typing/swipes on iOS via wda.py, adb input/screencap/rotation on Android, recording the room with the Yeti X to prove a sound is actually heard (Michael's desk setup; the tools are evolution-mobile's audio skills), AXe and SimCam on the Simulator, headless emulators, and the traps (interface-only rotation, points vs pixels, stale bundles, production data). Triggers on: tap the phone, tap the iPad, drive the device, device automation, UI automation, screenshot the phone, screenshot the iPad, rotate the device, landscape test, install on device, deploy to my phone, launch the app on device, devicectl, WebDriverAgent, WDA, wda.py, adb tap, adb screencap, adb input, emulator, simulator taps, AXe, SimCam, test station, test rig, camera test, scanner test on device, e-ink, BOOX, turntable, is the beep audible, record the phone, hear the device, microphone test, Yeti, sound test, audio test, first beep lost, beep not heard, record audio from the Mac."
+description: "MUST be used when installing, launching, tapping, screenshotting, rotating or otherwise driving a real phone or tablet (iPhone, iPad, Pixel, Galaxy, BOOX) or a simulator/emulator from the Mac without a human touching it. Covers the device roster and which ones are safe to drive, devicectl (install, launch with arguments, console, screenshot, orientation), WebDriverAgent taps/typing/swipes on iOS via wda.py, adb input/screencap/rotation on Android, recording the room with the Yeti X to prove a sound is actually heard (Michael's desk setup; the tools are evolution-mobile's audio skills), AXe and SimCam on the Simulator, headless emulators, and the traps (interface-only rotation, points vs pixels, stale bundles, production data). Triggers on: tap the phone, tap the iPad, drive the device, device automation, UI automation, screenshot the phone, screenshot the iPad, rotate the device, landscape test, install on device, deploy to my phone, launch the app on device, devicectl, WebDriverAgent, WDA, wda.py, adb tap, adb screencap, adb input, emulator, simulator taps, AXe, SimCam, test station, test rig, camera test, scanner test on device, e-ink, BOOX, turntable, is the beep audible, record the phone, hear the device, microphone test, Yeti, sound test, audio test, first beep lost, beep not heard, record audio from the Mac, how fast is the tap, tap latency, time to screen, measure performance on device, release build timing, frames rendered, gfxinfo, keeps redrawing, dirty regions, jank."
 ---
 
 # Driving Test Devices
@@ -178,6 +178,73 @@ wider in dp. On the Pixel 7a (1080 px wide), `adb shell wm density 240` gives 72
 Always `adb shell wm density reset` afterwards (420 on the Pixel). The activity may restart on
 the change; an Expo DEV client then lands on its launcher and needs the `localhost:8081`
 server tapped.
+
+## Measuring speed on a device (how long a tap takes, and what keeps drawing)
+
+Worked out for evolution-mobile #345 (2026-11-08): how long from a tap to the screen being
+ready, and whether the app keeps drawing afterwards. Measure an **optimised build**, never a
+debug/DEV one: debug JavaScript is several times slower, and a redraw problem in that PR showed
+in release only (DEV: ~85 frames whatever the code did; release: 72 vs 300).
+
+**Tap to pixels, from the phone's own screen recording** (`scripts/tapfilm.py`):
+
+```bash
+adb shell settings put system show_touches 1        # the tap shows as a dot; put back to 0 after
+export ANDROID_SERIAL=34061JEHN03815
+T=~/.claude/skills/driving-test-devices/scripts/tapfilm.py
+python3 $T record before-1 500 1298 --out ./tmp/perf     # records 4 s, taps ~1.2 s in, analyses
+python3 $T analyse ./tmp/perf/*.mp4                       # re-analyse later
+```
+
+`screenrecord` writes a frame only when the screen changes, so each frame's timestamp is a
+change. The script lists every frame that differs from the one before (mean difference of a
+108x240 grey copy) with its time from the tap; "last big change" is when the screen settled.
+Anchor = the first change after 0.9 s (the dot / press highlight). Traps:
+- **The lead-in must be still.** A scroll indicator fading after the previous navigation
+  counted as the tap until changes before 0.9 s were ignored.
+- **The press frame is sometimes missed** (it shares a frame with the response), so a run can
+  understate by a frame or four; say so rather than averaging it away.
+- A dot-in-a-patch detector was tried and dropped: the response changes the same patch.
+- Look at the frames, don't trust the numbers alone. A labelled strip for a PR:
+  `ffmpeg -i x.mp4 -fps_mode passthrough -vf "select='eq(n\,1)+eq(n\,5)',scale=300:-1" -frames:v 2 f%d.png`,
+  then `magick f1.png -gravity north -background white -splice 0x52 -font /System/Library/Fonts/Supplemental/Arial.ttf -pointsize 24 -annotate +0+12 "Tap" l1.png`
+  and `magick l1.png l2.png +append strip.png`. Homebrew's ffmpeg has **no `drawtext`**, and
+  ImageMagick needs the font as a file path. The Mac's python has no numpy or Pillow (the
+  script is pure Python on raw frames).
+- Reset between runs so each starts from the same state (a script: Back, reopen, navigate),
+  with a screenshot before recording. Interleave the builds being compared (install A, 3 runs,
+  install B, 3 runs, A, B): a time-based effect (a sync) otherwise lines up with one build.
+
+**Frames the app drew, and when it stops:**
+
+```bash
+adb shell "dumpsys gfxinfo <pkg> reset >/dev/null; input tap 727 2294; sleep 5; dumpsys gfxinfo <pkg>" | grep "Total frames"
+# how long it lasts: 2 s windows
+adb shell 'dumpsys gfxinfo <pkg> reset >/dev/null; input tap X Y; for i in 1 2 3 4 5 6; do sleep 2; dumpsys gfxinfo <pkg> | grep "Total frames"; dumpsys gfxinfo <pkg> reset >/dev/null; done'
+```
+
+An idle screen draws 0. Run the whole sequence inside one `adb shell "..."` so the tap and the
+count aren't separated by adb round trips.
+
+**What is redrawing:** `adb shell setprop debug.hwui.show_dirty_regions true` (relaunch the app;
+`false` afterwards) flashes each redrawn region; film it and look at single frames, since the
+flash lasts one frame. **Which thread:** `adb shell "input tap X Y; sleep 0.3; top -H -b -n 1 -d 2 -m 8 -p <pid> -o %CPU,TIME+,CMD"`
+(the app's name = UI thread, `mqt_v_js` / `mqt_js` = JavaScript). UI busy with JS idle means
+native, not a React render loop.
+
+**React renders**, in a DEV build: a temporary `console.log` in the component (never committed),
+then count it in the Metro log before and after the steps. `tmux clear-history` does not clear
+the visible pane, so capture the pane before and after (`tmux capture-pane -p -S - -t <session>`)
+and diff the two.
+
+**iOS** has no screen recorder reachable from the Mac here: tap with WDA and take a burst of
+`/screenshot`s (about one per 550 ms). Enough to catch an empty page in a DEV build, not to time.
+
+**Release build of an Expo app** that installs over the DEV app: CLAUDE.md in evolution-mobile
+(`APP_VARIANT=development ... assembleRelease`). Gradle bundles the JavaScript partway through
+(`createBundleReleaseJsAndAssets`, "Done writing bundle output"): don't edit `src/` before then,
+or the "before" APK picks up the change. Keep each APK (`cp .../app-release.apk ./tmp/x.apk`),
+and reinstall the debug build afterwards so the DEV app talks to Metro again.
 
 ## Simulator and emulator
 
