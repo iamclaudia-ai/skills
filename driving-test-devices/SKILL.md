@@ -261,6 +261,12 @@ What is specific to Michael's desk:
 - **`sips -c H W --cropOffset Y X` crops from the CENTRE**: it ignores the offset. Crop PR
   images with Pillow (`im.crop((0, 0, w, h))`, via `uv run --with pillow`) and look at the
   result before attaching it.
+- **`sips -g orientation` misses EXIF orientation on camera JPEGs**: it printed `<nil>` for VisionCamera
+  files tagged 6 (2026-11-08, evolution-mobile#395). Read the tag with Pillow:
+  `uv run --quiet --with pillow python -I -c "from PIL import Image; print(Image.open('x.jpg').getexif().get(0x0112))"`.
+  To pull an app's file: iOS `xcrun devicectl device copy from --device <UDID> --domain-type appDataContainer
+  --domain-identifier <bundle-id> --source Documents/<path> --destination ./tmp/x.jpg`; Android
+  `adb exec-out run-as <pkg> cat files/<path> > ./tmp/x.jpg`.
 - **An Expo DEV app on iOS falls back to "Finding Dev Servers" after Metro restarts.** Point
   it back without touching it: `xcrun devicectl device process launch --device <UDID>
   --terminate-existing --payload-url "<scheme>://expo-development-client/?url=http%3A%2F%2F<host>%3A8081"
