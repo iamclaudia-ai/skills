@@ -298,7 +298,10 @@ What is specific to Michael's desk:
   and the phone's media volume up (the Pixel 7a was at 25/25 for #390's runs).
 - **BlackHole 2ch is installed** here, for recording the emulator digitally. The emulator
   takes the Mac's output once, at boot: boot it with BlackHole as the output (the project
-  skill has the steps), then only the input needs switching to record it. Through the room,
+  skill has the steps), then only the input needs switching to record it. **Switch the input
+  back when done**: `hs -c 'spoon.AudioPriority:apply()'` (Hammerspoon's AudioPriority Spoon
+  picks the best plugged-in mic). A session on 2026-11-07 left BlackHole as the system default
+  input for a day. Through the room,
   an emulator booted while his headphones were the default looked "too faint": leakage.
 
 ## Traps
