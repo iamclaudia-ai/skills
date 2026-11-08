@@ -183,7 +183,10 @@ What is specific to Michael's desk:
   closed: only at 100%), then put back what was there, and tell him.
 - Ask first: door shut (someone may be talking in the next room, and his dictation counts),
   and the phone's media volume up (the Pixel 7a was at 25/25 for #390's runs).
-- The emulator's sound is too faint and jittery to test with; use the Pixel.
+- **BlackHole 2ch is installed** here, for recording the emulator digitally. The emulator
+  takes the Mac's output once, at boot: boot it with BlackHole as the output (the project
+  skill has the steps), then only the input needs switching to record it. Through the room,
+  an emulator booted while his headphones were the default looked "too faint": leakage.
 
 ## Traps
 
