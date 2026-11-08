@@ -46,6 +46,8 @@ resolution (`--quality best`), find the moment in the sheet, then crop the regio
 
 ## Traps
 
+- **vesuvius only for now.** Anima Sedes has the skill linked but not `yt-dlp`, `ffmpeg`, `parakeet-mlx` or `uv`
+  (checked 2026-11-07). Install them with Homebrew there before relying on it.
 - **Background music becomes "lyrics".** Whisper transcribes a song as if it were speech (the bookmarked
   back-pain video came back as a pop chorus). If the transcript reads like lyrics, the content is visual:
   on-screen text, demonstrations. Say so instead of summarizing the lyrics.
