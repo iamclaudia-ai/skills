@@ -49,6 +49,31 @@ Screenshots often carry most of a thread's content: look at them before giving a
 - Credits: console.x.com → Credits (account 1270720339383738368). Prepaid; at 2026-11-07 the balance was $43.
 - Prices (2026, pay-per-use): post read $0.005, user read $0.010, owned reads $0.001, post create $0.015
   ($0.20 with a URL). Billed per item returned, not per call.
+## Bookmarks archive
+
+Michael bookmarks things to read "later". We keep every bookmark locally (tweets get deleted) and read them for
+ideas. Archive: `~/.anima/x-bookmarks/` (`X_BOOKMARKS_DIR`): `bookmarks.jsonl` (one per line, most recently
+bookmarked first: url, author, created_at, full text incl. long posts, expanded links, media, quoted tweet,
+metrics) and `raw/` (every API page as returned).
+
+```bash
+S=~/.claude/skills/browsing-twitter/scripts
+bun $S/bookmarks-sync.ts                 # new ones since last sync; stops at the first saved one (~$0.05 if none)
+bun $S/bookmarks-sync.ts --full          # walk the whole feed, fill gaps, refresh old records (~$4.60 at 838)
+bun $S/bookmarks-show.ts --limit 50      # read, free; --offset N, --grep <regex>
+```
+
+- **X truncates the bookmarks feed.** A page that comes back short (a bookmarked tweet was deleted: 98 of 100)
+  carries no `next_token`, so naive paging ends early. With 100 per page the feed "ended" at 98 posts (back to
+  2026-05-29); the real feed had 833, back to 2018. The sync retries a short tokenless page from the same start
+  at 50 → 20 → 5 before believing the end. x-cli's April 2026 export (303, from July 2025) was cut short the same way.
+- **Order is bookmark time, not tweet id.** An old tweet bookmarked today has a low id, so "already saved" is a set
+  lookup (x-cli's id watermark was wrong for this).
+- History: `~/Projects/oss/x-cli` (a Python fork with its own OAuth, April 2026) is retired; its pages were imported
+  with `bookmarks-import-xcli.ts`. Don't use x-cli.
+- Reading for ideas: open the links and threads behind the promising ones (`thread-up.sh`, WebFetch); the
+  bookmarked tweet is often just a headline. Ideas worth doing become issues in the relevant repo.
+
 ## User context: bookmarks and acting as @kiliman (xurl)
 
 Bookmarks (and likes, DMs, posting) **refuse the app-only bearer token** ("Authenticating with OAuth 2.0
