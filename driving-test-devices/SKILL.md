@@ -78,6 +78,7 @@ WDA_DEVICE=ipad python3 $W tap 410 472
 WDA_DEVICE=ipad python3 $W hold 410 472 150
 WDA_DEVICE=ipad python3 $W type 'hello'
 WDA_DEVICE=ipad python3 $W swipe 400 900 400 300
+WDA_DEVICE=ipad python3 $W drag 812 1172 520 760   # press, hold 600 ms, move: resize/move a window
 WDA_DEVICE=ipad python3 $W rotate landscape
 WDA_DEVICE=ipad python3 $W shot ./tmp/shots/x.png
 ```
@@ -108,6 +109,30 @@ tmux new -d -s wda-ipad -c ~/Projects/3votech/WebDriverAgent \
 Ready when the log shows `ServerURLHere->http://<ip>:8100`. A new device first fails with
 "Timed out while enabling automation mode" until **Settings > Developer > Enable UI Automation**
 is on (Michael flips it). The screen must stay unlocked: Auto-Lock = Never.
+
+**Since iPadOS 27.2 every runner start asks for Touch ID** ("Enable UI Automation — Touch ID
+to continue with XCTest"), and the runner gives up after 60 s with the same "Timed out" error.
+That needs Michael's finger: ask him first, start the runner when he says he's at the iPad, and
+wait in a loop for `ServerURLHere` rather than a fixed sleep. A notification is easy to miss.
+
+### iPad multitasking (windows, tiling)
+
+My iPad runs **Windowed Apps** (Settings > Multitasking & Gestures); windows start maximized.
+Checked 2026-11-07 for claudia-scan#11 (camera interruptions):
+
+- **Resize** a window from its bottom-right corner: `wda.py drag 812 1172 520 760` (`drag` presses,
+  holds, then moves; a plain `swipe` moves at once and does nothing to a window).
+- **Move** a window by its title bar: `drag` from the bar to the new spot.
+- **Window controls**: tap the window's ••• at its top left to show the traffic lights; **hold** the
+  green one (`hold x y 900`) for the tile menu, then `taplabel` one of Left, Right, Top, Bottom,
+  Fill, "Left and Right", "Arrange thirds". Yellow minimizes. Coordinates from a `shot`: the
+  controls are not always in `tree`.
+- A second app: tap its dock icon (it opens at its last frame, often maximized), or `wda.py launch`.
+- **A full-screen modal hides the window controls**, and an app's ✕ usually sits where they would
+  be: never tap there blind. Bring a second window forward instead.
+- iPadOS gives the camera only to an app alone on screen: two windows visible, even one exactly
+  covering the other, interrupts the camera (`videoDeviceNotAvailableWithMultipleForegroundApps`);
+  Fill or minimizing the other brings it back.
 
 ## Android: adb
 
@@ -153,6 +178,11 @@ server tapped.
   `Pixel_Tablet_API_36`, `Small_Tablet_API_36`. Google's Android CLI
   (`$ANDROID_HOME/cmdline-tools/latest/bin/android emulator list|start|stop|create`) replaces
   avdmanager; `start` waits for a full boot, but `create` exits 0 on failure.
+- **Split screen on an Android emulator, from the shell** (checked 2026-11-07, Android 16 tablet):
+  `adb shell dumpsys activity service SystemUIService WMShell splitscreen moveToSideStage <taskId> 1`
+  puts that task beside the front app (task ids from `adb shell am stack list`; start the second
+  app first, then bring the first back). `... splitscreen exitSplitScreen <taskId>` leaves it. In
+  split screen the app with focus (the one last tapped) wins a contested camera.
 - **The emulator's camera can be any file** (checked 2026-11-07, emulator 36.3):
   `-camera-back imagefile:/ABS/x.png` or `videofile:/ABS/x.mp4` (loops). PNG only (a JPEG fails
   silently and the front "pixel house" camera opens); turn the content 90° anticlockwise

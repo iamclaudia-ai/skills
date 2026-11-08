@@ -15,6 +15,7 @@ Pick the device with WDA_DEVICE=iphone|ipad (default iphone) or WDA_HOST=http://
   wda.py taplabel <label> [type]    tap the centre of the highest element with that exact label
   wda.py type <text>                type into the focused field
   wda.py swipe <x1> <y1> <x2> <y2>  drag
+  wda.py drag <x1> <y1> <x2> <y2> [holdMs] [moveMs]   press, hold, then move (iPad window resize/move: hold 600)
   wda.py launch <bundle-id>         bring an app to the front
   wda.py rotate <portrait|landscape> turn the INTERFACE (the device stays physically where it is)
 """
@@ -112,6 +113,12 @@ def main(argv):
         x1, y1, x2, y2 = map(float, argv[1:5])
         pointer([{'type': 'pointerMove', 'duration': 0, 'x': x1, 'y': y1}, {'type': 'pointerDown'}, {'type': 'pointerMove', 'duration': 300, 'x': x2, 'y': y2}, {'type': 'pointerUp'}])
         print('swiped')
+    elif cmd == 'drag':
+        x1, y1, x2, y2 = map(float, argv[1:5])
+        hold = int(argv[5]) if len(argv) > 5 else 600
+        move = int(argv[6]) if len(argv) > 6 else 800
+        pointer([{'type': 'pointerMove', 'duration': 0, 'x': x1, 'y': y1}, {'type': 'pointerDown'}, {'type': 'pause', 'duration': hold}, {'type': 'pointerMove', 'duration': move, 'x': x2, 'y': y2}, {'type': 'pause', 'duration': 200}, {'type': 'pointerUp'}])
+        print('dragged')
     elif cmd == 'launch':
         call('POST', f'/session/{session()}/wda/apps/launch', {'bundleId': argv[1]})
         print('launched', argv[1])
