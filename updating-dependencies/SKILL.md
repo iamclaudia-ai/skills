@@ -246,8 +246,8 @@ version, stop and say so rather than landing by hand.
       `gh pr view <n> --json state` (it was still open each time) and run it
       again. "Could not sync main" at the end is expected: `main` is checked
       out in Michael's working copy.
-   4. **A UI dependency (layout, components, CSS) gets a live check before
-      it merges**, through the real gateway, not a standalone harness: merge,
+   4. **A UI dependency (layout, components, CSS) gets a live check right
+      after it merges**, through the real gateway, not a standalone harness: merge,
       `anima watchdog reload`, then DOMINATRIX `eval` on the page for element
       rects and `document.scrollingElement.scrollHeight`, plus a screenshot.
       Be ready to revert in one commit. dockview v8 (#91) passed a harness
