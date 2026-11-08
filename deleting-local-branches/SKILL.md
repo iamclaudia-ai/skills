@@ -105,7 +105,9 @@ of deletions skips nutwords' pre-push hook. Afterwards: `git fetch --prune`.
 empty leftover folders with `rmdir`, which only ever removes empty ones. Never pipe `gh-stack`
 into `tail`/`head`. Writing inside `.git/` is blocked, so empty gh-stack stack shells (listed
 with `"branches": []` after `delete --keep-branch`) stay unless Michael moves
-`.git/.gh-stack/active/<name>.json` to `archived/` himself. They are harmless. The zsh glob
+`.git/.gh-stack/active/<name>.json` to `archived/` himself. They are harmless. `gh-stack archive`
+can't help: it only lists and restores (kiliman/gh-stack#68 asks for `archive <name>`, or for
+`delete` to archive a stack it empties). The zsh glob
 `packages/*/tmp` aborts the command when nothing matches: `setopt nullglob` (the script does).
 
 ## Notes
