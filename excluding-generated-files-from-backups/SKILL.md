@@ -60,9 +60,17 @@ passes only paths ending in a watched name, and the handler skips ones inside an
 ```bash
 tmutil isexcluded <path>                               # [Excluded] / [Included]
 tmutil status                                          # running backup: files/bytes/TimeRemaining
-grep -c '/node_modules/' /Library/Backblaze.bzpkg/bzdata/bzfilelists/*_root_filelist.dat
 cat /Library/Backblaze.bzpkg/bzdata/bzfilelists/filestats.xml   # everythingnum = files selected
+# Are excluded files still being UPLOADED? (column 4 is GMT: 10:48 EST = 15:48 GMT)
+awk -F'\t' '$2=="+" && $4>="<yyyymmddHHMMSS GMT>" && $NF~/\/node_modules\//' \
+  /Library/Backblaze.bzpkg/bzdata/bzbackup/bzdatacenter/bz_done_$(date -u +%Y%m%d)_0.dat | wc -l
 ```
+
+`bzfilelists/*_root_filelist.dat` is what the scanner **saw**, not what's selected: it lists
+60K `.log` files and OrbStack data that were excluded all along. Counting `node_modules` in it
+proves nothing; verify rules against uploads in `bz_done`. A full rescan (`*_root_filelist.dat.future`
+growing, `bzfilelist` running) holds uploads back until it finishes: on 2026-11-09 one ran from
+Nov 6 to past noon Nov 9 (70M lines) after iCloud re-downloaded offloaded files, with 1 upload all day.
 
 ## Traps
 
