@@ -189,6 +189,9 @@ empties the Trash.
 
 - `pkill -f <pattern>` kills the tmux-wrapped shell running it (the pattern is in its command line).
   Use `pkill -x <name>`.
+- **Never `pkill bun` (any flags).** Anima's gateway, agent host and every extension are `bun`
+  processes. On 2026-11-08, `pkill -x bun -f` meant for a throwaway server restarted all of Anima
+  (the watchdog recovered it). Stop your own server by port or PID: `lsof -ti tcp:<port> | xargs kill`.
 - Homebrew 7 moved the cask API to `~/Library/Caches/Homebrew/api/internal/packages.<tag>.jws.json`
   (scan-apps handles it). `executables.txt` is beside it.
 - `lms ls` launches LM Studio; `lms daemon down` refuses while the app runs; `pkill -x "LM Studio"`.
