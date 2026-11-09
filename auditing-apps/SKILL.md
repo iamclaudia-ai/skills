@@ -44,6 +44,10 @@ so run the scripts directly from the project link, `S=~/dotfiles/.claude/skills/
 - **`cli-usage [formula...] [--days N]`**: score Homebrew formulae by real use (zsh history
   + my Bash commands from Claude transcripts). No arguments = the `brew` lines of
   `setup/unassigned.txt`.
+- **`perf-baseline.sh [label]`**: snapshot load, memory, top CPU/RAM, the background work
+  that skews numbers (Time Machine, iCloud, Spotlight, media analysis), launchd counts, and the
+  last 24h of diagnostic reports (`.hang` = the UI froze). Saves to `~/dotfiles/tmp/perf-baselines/`.
+  Run it after a boot **once Time Machine and iCloud are quiet**, and compare it with earlier runs.
 - **`trash-app "Name|bundle.id" [...] [--dry-run]`**: quit, boot out the jobs named after
   the bundle id, trash the app and its usual `~/Library` data, then print the cask's
   uninstall/zap paths for the extras.
