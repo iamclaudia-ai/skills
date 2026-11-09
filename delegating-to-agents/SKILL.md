@@ -1,6 +1,6 @@
 ---
 name: delegating-to-agents
-description: "Use PROACTIVELY when you need to delegate tasks to sub-agents — Cody (OpenAI Codex) or Claude (Haiku/Sonnet/Opus). Agents run as separate processes via agent-host and can execute commands, read/write files, and run tests autonomously. Use this for code review, test writing, refactoring, second opinions, or any work you want done in parallel. Triggers on: ask cody, delegate to cody, cody review, cody test, code review, have cody, let cody, send to cody, codex task, run tests with cody, cody write tests, get a second opinion, delegate task, sub-agent, assistant review, spawn agent, claude agent, haiku task, sonnet task, opus task, parallel task, worktree, delegate to claude."
+description: "Use PROACTIVELY when you need to delegate tasks to sub-agents — Cody (OpenAI Codex) or Claude (Haiku/Sonnet/Opus). Agents run as separate processes via agent-host and can execute commands, read/write files, and run tests autonomously. Use this for code review, test writing, refactoring, second opinions, or any work you want done in parallel. Triggers on: ask cody, delegate to cody, cody review, cody test, code review, have cody, let cody, send to cody, codex task, run tests with cody, cody write tests, get a second opinion, delegate task, sub-agent, assistant review, spawn agent, claude agent, haiku task, sonnet task, opus task, parallel task, worktree, delegate to claude, parallel sessions, lanes, fan out sessions, create_session, one session per domain, coordinate sessions."
 ---
 
 # Delegating Tasks to Sub-Agents
@@ -64,6 +64,29 @@ anima session start_task --agent claude --model haiku --prompt "Summarize the ch
 # Monitor all running tasks
 anima session list_tasks --status running
 ```
+
+## Parallel Claudia Sessions (Lanes)
+
+For a big batch of similar tickets (a migration split by domain), run several full Claudia sessions, one per worktree,
+instead of tasks. Each gets a brief as its first message and works like any session: notes, PRs, handoffs. Worked
+example: beehiiv milestone 4, Nov 9 (`swarm/tmp/plans/granular-permissions/M4-LANES.md`, `BRIEF-TEMPLATE.md`,
+`tools/start_lanes.py`).
+
+1. **A coordination file in a shared `tmp/` folder:** the queue, a status row per lane, the facts every lane needs
+   (files they'll all edit and how those conflicts resolve), and the coordinator's session id, read fresh when reporting.
+2. **Claims are atomic:** `mkdir tmp/.../claims/<slug>` succeeds for exactly one session.
+3. **Create the session, then bootstrap it yourself.** `anima session create_session --cwd <repo> --worktree <branch>
+   --title ...` does none of handoff's bootstrap (no tmp link, no CodeGraph), and it can return before the worktree
+   exists. Create the worktree with `git worktree add -b <branch> <path> origin/main` on the path it returned, then run
+   `scripts/bootstrap-worktree.sh <worktree> <main> <shared tmp folders...>`. Making folders in the path before git does
+   breaks `git worktree add` (non-empty directory).
+4. **Send briefs staggered** in the background (`send_prompt` from a detached process, ~90s apart) so every lane's setup
+   (installs, DB migrations) doesn't run at once.
+5. **Lanes report with a background send_prompt** (`nohup ... &`): a blocking one waits for the coordinator's turn to end.
+   When a lane finishes, it claims the next item and hands off to a fresh session in a new worktree (`anima session
+   handoff --worktree`, which does bootstrap).
+6. **Look for shared counters before fanning out.** A spec that pins an exact count every lane changes turns main red
+   when two PRs that each passed alone merge. Make it a ceiling first.
 
 ## Worktree Isolation
 
