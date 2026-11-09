@@ -361,9 +361,13 @@ Plan for the BOOX: auto-rotate off (its G-sensor would flip the label), adb over
 never sleep while charging, full refresh between images, labels rendered at true scale
 (3 in = 900 px).
 
-**Layout (Michael, 2026-11-08):** the stands are set up. The BOOX and an **old iPad mini (2 or 3,
-iOS 12.5, reset for this)** sit **back to back on the USB turntable**, with the test phones and the
-iPad around it. Turn the turntable to face whichever device's camera is under test.
+**Planned layout (Michael, 2026-11-08):** the USB turntable is **still in the mail** (due ~Nov 10).
+Until it arrives, Michael turns and moves the targets by hand. Once it's here, the BOOX and an **old
+iPad mini (2 or 3, iOS 12.5, reset for this) on a small tablet stand** sit **back to back on the
+turntable**, with the test phones around it. Turn it to face whichever device's camera is under
+test. The "TV" used to be a laptop screen, which is too big for the turntable. If the iPad mini
+proves too small as a TV stand-in, a refurbished 10" iPad replaces it. Michael will share a photo
+of the finished rig: record what it shows here.
 - **BOOX (e-ink):** labels and anything that should look like paper. It's easier to scan, so it's
   the default target.
 - **iPad mini (LCD):** "hotel TV" mode, where a technician scans a MAC, serial or QR code off a screen,
