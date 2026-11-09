@@ -8,7 +8,49 @@
 # ~/dotfiles/tmp/perf-baselines/<timestamp>[-label].txt and prints it.
 #
 # Compare two with: diff <(grep -v '^ ' a.txt) <(grep -v '^ ' b.txt), or just read them side by side.
+#
+# --wait-idle [minutes]: first wait (default up to 240 min) until Time Machine is not running and the
+# background movers (backupd, bztransmit, cloudd, fileproviderd, mediaanalysisd, photoanalysisd, mds_stores)
+# use under 5% CPU together, for 3 checks in a row a minute apart. Gives up and measures anyway at
+# the limit, saying so in the report.
 set -uo pipefail
+
+LABEL=""
+WAIT=0
+WAIT_MAX=240
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--wait-idle)
+		WAIT=1
+		if [[ "${2:-}" =~ ^[0-9]+$ ]]; then WAIT_MAX="$2"; shift; fi
+		;;
+	*) LABEL="$1" ;;
+	esac
+	shift
+done
+set -- ${LABEL:+"$LABEL"}
+
+busy_cpu() {
+	ps -axo pcpu=,comm= | awk '{n=split($2,a,"/"); p=a[n]}
+		p=="backupd"||p=="bztransmit"||p=="cloudd"||p=="fileproviderd"||p=="mediaanalysisd"||p=="photoanalysisd"||p=="mds_stores" {s+=$1}
+		END {printf "%d", s}'
+}
+IDLE_NOTE=""
+if [ $WAIT -eq 1 ]; then
+	quiet=0
+	waited=0
+	tm="?"
+	cpu="?"
+	while [ $waited -lt "$WAIT_MAX" ]; do
+		tm=$(tmutil status 2>/dev/null | awk -F'= ' '/Running/ {gsub(/;/,"",$2); print $2}')
+		cpu=$(busy_cpu)
+		if [ "${tm:-0}" = "0" ] && [ "$cpu" -lt 5 ]; then quiet=$((quiet + 1)); else quiet=0; fi
+		[ $quiet -ge 3 ] && break
+		sleep 60
+		waited=$((waited + 1))
+	done
+	if [ $quiet -ge 3 ]; then IDLE_NOTE="idle after ${waited} min wait"; else IDLE_NOTE="NOT IDLE: gave up after ${WAIT_MAX} min (TM running=${tm:-?}, movers ${cpu}% CPU)"; fi
+fi
 
 OUT_DIR="$HOME/dotfiles/tmp/perf-baselines"
 mkdir -p "$OUT_DIR"
@@ -17,6 +59,7 @@ OUT="$OUT_DIR/$STAMP${1:+-$1}.txt"
 
 {
 	echo "# perf baseline $STAMP ${1:-}"
+	[ -n "$IDLE_NOTE" ] && echo "# $IDLE_NOTE"
 	echo "## uptime"
 	uptime
 	echo "boot: $(sysctl -n kern.boottime | sed -E 's/.*} //')"
