@@ -87,6 +87,10 @@ cat /Library/Backblaze.bzpkg/bzdata/bzfilelists/filestats.xml   # everythingnum 
   on vesuvius, from 2025-08), tab-separated, one line per upload/dedupe/delete event, path in the
   last column. Diff those paths against the disk to find what Backblaze still holds that the Mac
   lost; restore through the web console or Downloader app (no CLI for personal backups).
+  `scripts/backblaze-missing-files.py <out-dir> [ROOT...]` does it (~2 min for 21 GB of logs):
+  ops are `+` uploaded, `=` re-upload/chunk, `-` gone from the Mac. Photos originals show up as
+  missing when iCloud Photos "Optimize Mac Storage" offloads them: match the UUID filename against
+  `ZASSET.ZUUID` in `Photos.sqlite` (open `?mode=ro&immutable=1`) before calling a photo lost.
   `bzfilelists/*_root_filelist.dat` is only the current selection.
 - fswatch prints flags then the path (`Created /path`); with `--event` filters there's no `IsDir`
   flag, so the handler tests `[ -d ]`. Renames report the new path.
