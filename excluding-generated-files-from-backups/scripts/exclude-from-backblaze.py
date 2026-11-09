@@ -11,7 +11,7 @@ import sys
 import time
 
 BZINFO = "/Library/Backblaze.bzpkg/bzdata/bzinfo.xml"
-# Same "always regenerable" list as exclude-from-time-machine.sh. Backblaze can't ask git whether
+# Same "always regenerable" list as ALWAYS in generated-names.sh. Backblaze can't ask git whether
 # a folder is ignored, so generic names (dist, build...) stay backed up there.
 NAMES = ["node_modules", ".git", "venv", ".venv", "__pycache__", ".next", ".nuxt", ".svelte-kit",
          ".turbo", ".expo", ".parcel-cache", ".nxcache", ".gradle", "DerivedData", ".codegraph",

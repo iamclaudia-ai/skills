@@ -1,6 +1,6 @@
 ---
 name: excluding-generated-files-from-backups
-description: "MUST be used when excluding files or folders from Time Machine or Backblaze, or when a backup is slow, huge, or keeps running. Excludes regenerable folders (node_modules, .git, venv, __pycache__, .next, .turbo, gitignored dist/build/coverage, Xcode DerivedData, OrbStack VM disk) by name: Time Machine via fast sticky xattr exclusions (rerun daily by the Anima scheduler), Backblaze via name rules in bzinfo.xml. Covers checking what is excluded, verifying Backblaze honors its rules, and why backupd burns CPU. Triggers on: time machine exclusion, exclude from backup, tmutil addexclusion, backupd high CPU, time machine slow, backup taking forever, backblaze exclude, bzinfo.xml, excludefname_rule, exclude node_modules from backup, exclude .git, backblaze file count, asimov, backup generated files, sticky exclusion, com_apple_backup_excludeItem."
+description: "MUST be used when excluding files or folders from Time Machine or Backblaze, or when a backup is slow, huge, or keeps running. Excludes regenerable folders (node_modules, .git, venv, __pycache__, .next, .turbo, gitignored dist/build/coverage, Xcode DerivedData, OrbStack VM disk) by name: Time Machine via fast sticky xattr exclusions (an FSEvents watcher marks new folders instantly; a daily sweep backs it up), Backblaze via name rules in bzinfo.xml. Covers checking what is excluded, verifying Backblaze honors its rules, and why backupd burns CPU. Triggers on: time machine exclusion, exclude from backup, tmutil addexclusion, backupd high CPU, time machine slow, backup taking forever, backblaze exclude, bzinfo.xml, excludefname_rule, exclude node_modules from backup, exclude .git, backblaze file count, delete files from backblaze, backblaze version history, fswatch, watch for new folders, asimov, backup generated files, sticky exclusion, com_apple_backup_excludeItem."
 ---
 
 # Excluding Generated Files from Backups
@@ -17,31 +17,43 @@ slow: `backupd` ran at 1-1.4 cores for 14+ hours walking 23M files.
 
 ## Available Commands
 
-- **`exclude-from-time-machine`** `[--dry-run] [ROOT...]` (default root `~/Projects`): finds the
-  folders and marks the new ones. Always-regenerable names are excluded anywhere; generic names
+- **`exclude-from-time-machine`** `[--dry-run] [ROOT...]` (default root `~/Projects`): sweeps for
+  the folders and marks the new ones. Always-regenerable names are excluded anywhere; generic names
   (`dist build out coverage target`) only where `git check-ignore` says git ignores them. Also
   excludes `~/Library/Developer`. ~75 s on vesuvius, idempotent.
+- **`watch-generated-folders`** `[ROOT...]`: marks folders the moment they're created (FSEvents via
+  `fswatch`), so an hourly backup never catches a fresh `pnpm install` in a new worktree. Runs under
+  launchd; don't start it by hand.
+- **`install-watcher`** `[--remove]`: writes and loads the launchd agent
+  `ai.iamclaudia.exclude-generated-watcher` (KeepAlive, low priority). Needs `brew install fswatch`.
+  Log: `~/Library/Logs/exclude-generated-watcher.log`.
+- **`exclude-from-backblaze`** `[--dry-run]`: adds missing name rules to Backblaze's `bzinfo.xml`
+  (backs it up first). Always-regenerable names only.
+
+```bash
+anima skills run excluding-generated-files-from-backups exclude-from-time-machine --dry-run
+anima skills run excluding-generated-files-from-backups install-watcher
+anima skills run excluding-generated-files-from-backups exclude-from-backblaze
+```
+
+The name lists live in `scripts/generated-names.sh` (both Time Machine scripts source it) and in
+`NAMES` in `exclude-from-backblaze.py`: change both, then rerun the sweep and the Backblaze script.
 
 **One-time, by hand on a new machine:** OrbStack's VM disk (a 2 TB sparse `data.img.raw`,
 rewritten constantly while OrbStack runs):
 `tmutil addexclusion ~/Library/Group\ Containers/HUAQ24HBR6.dev.orbstack` (done on vesuvius
 2026-11-09). App Group Containers are privacy-protected per process, so the Anima scheduler can
 neither read nor write its xattr, and `tmutil isexcluded` from there doesn't see it either.
-- **`exclude-from-backblaze`** `[--dry-run]`: adds missing name rules to Backblaze's `bzinfo.xml`
-  (backs it up first). Always-regenerable names only.
 
-```bash
-anima skills run excluding-generated-files-from-backups exclude-from-time-machine --dry-run
-anima skills run excluding-generated-files-from-backups exclude-from-backblaze
-```
+## Watcher + sweep
 
-To add a name, add it to the lists in BOTH scripts, then run both.
+The watcher handles new folders; the Anima scheduler task "Exclude generated folders from Time
+Machine" (cron `17 4 * * *`, exec) sweeps daily as a backstop: folders created while the watcher was
+down, a `.git` from a clone made before install. Backblaze rules are patterns, so they need neither.
 
-## Scheduled
-
-Anima scheduler task "Exclude generated folders from Time Machine" (cron `17 4 * * *`, exec) reruns
-the Time Machine script daily: a folder that is deleted and recreated (`rm -rf node_modules`) loses
-its mark. Backblaze rules are patterns, so they need no rerun.
+Measured on vesuvius: idle 0.0% CPU / 6.5 MB. A burst of 72K file events (6K folders) in 18.6 s cost
+fswatch 3.7 CPU-seconds total; the new `node_modules` was marked within ~1 s. fswatch's `-i` regex
+passes only paths ending in a watched name, and the handler skips ones inside an excluded folder.
 
 ## Checking
 
@@ -63,6 +75,15 @@ cat /Library/Backblaze.bzpkg/bzdata/bzfilelists/filestats.xml   # everythingnum 
 - Backblaze rules match the **lowercased** path; `contains_1="/name/"` matches the folder anywhere.
   `skipFirstCharThenStartsWith="users/michael/projects/"` would scope one to Projects. Applied at
   the next hourly file scan; Backblaze then drops excluded files from the backup after retention.
+- **Backblaze can't delete specific files from a backup** (no CLI, no per-folder purge). Excluded
+  files age out per the version-history setting. On Forever that's never, billed at $0.006/GB/month
+  for versions older than one year. Shortening version history (web console → Overview → Version
+  History) purges EVERYTHING past the new window, real deleted files included; deleting the whole
+  backup is the only immediate removal. On vesuvius (2026-11-09) the file list held ~180 GB of
+  node_modules + ~105 GB of other generated folders + ~8 GB .git: worst case ~$1.75/month once
+  over a year old. Michael's call whether that's worth a purge.
+- fswatch prints flags then the path (`Created /path`); with `--event` filters there's no `IsDir`
+  flag, so the handler tests `[ -d ]`. Renames report the new path.
 - Excluding `.git` means local-only branches, stashes and unpushed commits aren't backed up
   (working trees still are). Michael chose that (2026-11-09).
 - Postgres data (`docker-swarm/docker-volumes`) stays in Time Machine on purpose: TM copies from an
