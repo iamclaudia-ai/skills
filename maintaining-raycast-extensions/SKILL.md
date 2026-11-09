@@ -54,8 +54,15 @@ hallucinated. Real changes:
 6. `ray build -e dist -o <dir>`. **`-e` is the environment (dev|dist), `-o` the
    output dir.** `ray build` runs a full `tsc` and fails on type errors that
    `ray develop` tolerates, so a fork that "works" in dev may never have built.
-7. `bun run dev` once so Raycast 2 registers the dev extension (the v1→v2 app
-   migration imports dev extensions, but re-run if it's missing).
+7. **Install it locally (no store publish needed)**: `ray develop` builds into
+   `~/.config/raycast/extensions/<name>/` and registers it with Raycast, and it
+   **stays installed after the dev server stops**. Unattended:
+   `ray develop --non-interactive > log 2>&1 &`, wait for "built extension
+   successfully" (~10s), then `pkill -f 'ray develop'`. Check the folder has
+   compiled `*.js` files. **The v1→v2 app migration copied only `package.json`,
+   the eslint config and the assets of dev extensions, with no compiled code**, so
+   a migrated dev extension is broken until it's rebuilt this way.
+   Raycast's own DBs are encrypted, so confirm in the app.
 
 ## Traps
 

@@ -4,3 +4,4 @@ running-beehiiv-rails-console
 sweeping-player-feedback
 using-react-doctor
 auditing-apps
+maintaining-raycast-extensions
