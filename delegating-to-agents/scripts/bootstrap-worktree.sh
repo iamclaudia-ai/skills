@@ -1,12 +1,12 @@
 #!/bin/bash
-# Bootstrap a worktree that `anima session create_session --worktree` made: it does none of the handoff bootstrap.
+# Bootstrap a worktree made with `git worktree add`, before pointing `anima session create_session --cwd` at it.
 # Usage: bootstrap-worktree.sh <worktree> <main checkout> [shared tmp subfolder ...]
 # Links each named tmp/ subfolder from the main checkout (tmp/ itself often holds tracked .keep files, so it can't be a
 # symlink), and seeds CodeGraph from main's index when there is one.
 set -euo pipefail
 worktree="$1"; main="$2"; shift 2
 
-# create_session can return before the worktree exists; making folders in it first breaks `git worktree add`.
+# Never run this on a path create_session --worktree is still setting up: making folders first breaks its setup.
 for _ in $(seq 60); do [ -e "$worktree/.git" ] && break; sleep 2; done
 [ -e "$worktree/.git" ] || { echo "no worktree at $worktree; create it with git worktree add first" >&2; exit 1; }
 
