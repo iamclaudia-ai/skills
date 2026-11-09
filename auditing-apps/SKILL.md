@@ -28,7 +28,8 @@ Explain what an unfamiliar app or tool does before asking: he often doesn't know
 
 ## Available Commands
 
-Run through the **anima skills runner**:
+Project skills aren't visible to the anima skills runner (it only looks in `~/.claude/skills`),
+so run the scripts directly from the project link, `S=~/dotfiles/.claude/skills/auditing-apps/scripts`:
 
 - **`btm-audit <dump>`**: parse `sudo sfltool dumpbtm` output; one line per login or
   background item: `FLAG|ON/off|type|name|path`, flagging `TRASH` (target is in the
@@ -42,10 +43,10 @@ Run through the **anima skills runner**:
 
 ```bash
 sudo sfltool dumpbtm > /private/tmp/btm.txt
-anima skills run auditing-apps btm-audit /private/tmp/btm.txt
-anima skills run auditing-apps cli-usage
-anima skills run auditing-apps cli-usage mono watchman --days 30
-anima skills run auditing-apps trash-app "Speedtest|com.ookla.speedtest-macos" --dry-run
+~/dotfiles/.claude/skills/auditing-apps/scripts/btm-audit.py /private/tmp/btm.txt
+~/dotfiles/.claude/skills/auditing-apps/scripts/cli-usage.py
+~/dotfiles/.claude/skills/auditing-apps/scripts/cli-usage.py mono watchman --days 30
+~/dotfiles/.claude/skills/auditing-apps/scripts/trash-app.sh "Speedtest|com.ookla.speedtest-macos" --dry-run
 ```
 
 ## Instructions
