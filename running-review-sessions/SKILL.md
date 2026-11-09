@@ -28,7 +28,7 @@ rebuild. Don't silently overwrite a queue another session is working from.
 ### 2. Run the queue
 
 ```bash
-check-review-queue        # from the repo root (~/dotfiles/scripts). Michael's `crq` alias doesn't exist in my shell
+check-review-queue        # from the repo root. `crq` works too (symlinked in ~/.local/bin)
 check-review-queue --all  # also shows the hidden drafts, approved, quieted and team-requested PRs
 ```
 
