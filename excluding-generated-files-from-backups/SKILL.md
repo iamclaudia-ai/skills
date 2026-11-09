@@ -82,6 +82,12 @@ cat /Library/Backblaze.bzpkg/bzdata/bzfilelists/filestats.xml   # everythingnum 
   backup is the only immediate removal. On vesuvius (2026-11-09) the file list held ~180 GB of
   node_modules + ~105 GB of other generated folders + ~8 GB .git: worst case ~$1.75/month once
   over a year old. Michael's call whether that's worth a purge.
+- **What Backblaze has ever stored is logged locally**, not just what's selected now:
+  `/Library/Backblaze.bzpkg/bzdata/bzbackup/bzdatacenter/bz_done_YYYYMMDD_0.dat` (135 files / 21 GB
+  on vesuvius, from 2025-08), tab-separated, one line per upload/dedupe/delete event, path in the
+  last column. Diff those paths against the disk to find what Backblaze still holds that the Mac
+  lost; restore through the web console or Downloader app (no CLI for personal backups).
+  `bzfilelists/*_root_filelist.dat` is only the current selection.
 - fswatch prints flags then the path (`Created /path`); with `--event` filters there's no `IsDir`
   flag, so the handler tests `[ -d ]`. Renames report the new path.
 - Excluding `.git` means local-only branches, stashes and unpushed commits aren't backed up
