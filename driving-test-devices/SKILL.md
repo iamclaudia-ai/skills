@@ -359,7 +359,19 @@ Michael is building a ring of devices around a **BOOX Go 10.3 Gen II** e-ink dis
 one device, animate it (motion tests), and replay real proof images as regression targets.
 Plan for the BOOX: auto-rotate off (its G-sensor would flip the label), adb over Tailscale,
 never sleep while charging, full refresh between images, labels rendered at true scale
-(3 in = 900 px). Record the setup here once it exists.
+(3 in = 900 px).
+
+**Layout (Michael, 2026-11-08):** the stands are set up. The BOOX and an **old iPad mini (2 or 3,
+iOS 12.5, reset for this)** sit **back to back on the USB turntable**, with the test phones and the
+iPad around it. Turn the turntable to face whichever device's camera is under test.
+- **BOOX (e-ink):** labels and anything that should look like paper. It's easier to scan, so it's
+  the default target.
+- **iPad mini (LCD):** "hotel TV" mode, where a technician scans a MAC, serial or QR code off a screen,
+  and anything in color. No app install on iOS 12: a Safari page the Mac drives
+  (3votech/evolution-mobile#411).
+
+Scanning and photos are core to the apps, so they get tested on real devices, not only in the
+Simulator. Turntable control interface: not documented yet; record it here when first used.
 
 **Rotation is done in software, no servo (decided 2026-11-01).** Turn the device's interface
 (`wda.py rotate`, `devicectl orientation set`, adb `user_rotation`) and render the e-ink pattern
