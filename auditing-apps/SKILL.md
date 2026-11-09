@@ -199,3 +199,10 @@ empties the Trash.
   disk, and `mdutil -X` can hang.
 - After a reboot, check the login items you expect actually started (Tailscale needed a manual
   Login Item: its own toggle errors).
+- **Reinstalling Tailscale (App Store → standalone, or any fresh install) registers a new node
+  with a new 100.x IP.** The old node stays as `<host>-old`. Cloudflare's `*.kiliman.dev` wildcard
+  points at Vesuvius's Tailscale IP, so every Caddy host (anima, watchdog, code, ...) times out
+  while Caddy itself is fine (`curl --resolve anima.kiliman.dev:443:127.0.0.1` returns 200).
+  Fix: in the Tailscale admin console delete `<host>-old`, then Edit machine IPv4 on the new node
+  back to the old IP (Vesuvius: 100.90.157.39). Check with `dig +short anima.kiliman.dev @1.1.1.1`
+  against `tailscale ip -4`.
