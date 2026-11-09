@@ -20,6 +20,13 @@ make a GIF, OCR, put files on his iPhone): "do you really need this?". He'd rath
 have fewer apps and ask me. Keepers go into a layer Brewfile; everything else goes.
 Explain what an unfamiliar app or tool does before asking: he often doesn't know.
 
+Replaced already, don't reinstall:
+- **Logi G Hub** (Yeti X noise reduction, Blue VO!CE): macOS **Voice Isolation** does it better.
+  Control Center > Mic Mode, while an app is using the mic. It's set per app, once per app. Michael
+  tested it in Voice Memos and FluidVoice on 2026-11-08 and the hiss went silent. Meeting apps without
+  Mic Mode have their own noise suppression.
+- **WALTR PRO**: I convert with ffmpeg and put the files on his iPhone.
+
 ## When to Use
 
 - The monthly audit (a scheduler reminder fires on the 1st)
