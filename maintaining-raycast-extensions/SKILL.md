@@ -70,3 +70,25 @@ hallucinated. Real changes:
   real target.
 - A cloned extension's `origin` is the upstream author's repo: commit locally,
   never push.
+
+## Keeping the tooling current (security)
+
+Run the `auditing-dependencies` skill. Raycast-specific findings (Nov 2026):
+
+- Advisories are almost always **dev-only** (eslint, typescript-eslint, the
+  `ray` CLI's oclif deps). Raycast provides `@raycast/api` at runtime, so the
+  built bundle holds only your code plus `@raycast/utils`. Still fix them.
+- **TypeScript ceiling**: typescript-eslint (inside `@raycast/eslint-config`)
+  supports only `typescript <6.1`, so use 6.0.x, not 7. **TS 6 defaults
+  `types` to `[]`**, so `child_process`, `process`, `console` and `setTimeout`
+  stop resolving. Add `"types": ["node"]` to tsconfig.
+- ESLint 10 works with `@raycast/eslint-config` 2.2 and drops the vulnerable
+  `@eslint/eslintrc` chain (ajv 6, js-yaml, minimatch 3).
+- **minimatch GHSA-g3hv-75wg-m249 can't be overridden**: @oclif/core,
+  @eslint/config-array and typescript-estree pin `^10`, Bun overrides are
+  top-level only, and `filelist` (via @raycast/api → oclif autocomplete → ejs →
+  jake) uses `makeRe`/`regexp`/`matchOne`, all removed in minimatch 11. Ignore it
+  with an `"audit": "bun audit --ignore GHSA-g3hv-75wg-m249"` script (Bun has no
+  config-file ignore list) until the parents move.
+- The template's `"publish": "npx @raycast/api@latest publish"` bypasses the
+  lockfile. Use `"ray publish"`.
