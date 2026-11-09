@@ -68,6 +68,15 @@ hallucinated. Real changes:
 
 - **`ray lint` validates `author` against `https://www.raycast.com/api/v1/users/<handle>`**
   (404 means lint error). For a personal fork set it to `kiliman` (exists).
+- **Changing `author` on an installed dev extension registers a duplicate.**
+  Raycast keys extensions by author + name, so every command shows up twice.
+  Raycast 2's Settings → Extensions doesn't show the author or path, so you can't
+  tell the two apart. Fix: have Michael uninstall **both** (⋯ menu, top right of
+  the extension page), then re-run `ray develop` (step 7). Both entries share
+  `~/.config/raycast/extensions/<name>/`, and uninstalling deletes it. Afterwards
+  he runs the menu-bar command once to activate it again. Better: change the
+  author *before* the first `ray develop` on Raycast 2.
+- dcg blocks redirects to `$VAR` paths: write the `ray develop` log to a literal path.
 - Refactoring a hand-unrolled search into a recursive one can flip
   first-match vs last-match semantics. **Diff old vs new against live data**:
   `git show HEAD:src/utils.ts > old.ts`, import both into a bun script, and
