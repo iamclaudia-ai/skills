@@ -239,6 +239,24 @@ git diff --stat -- <file>           # MUST be empty — proves a clean restore
 Leave the shared checkout exactly as you found it. If you ever need to look at something there,
 read it — do not check out, do not edit.
 
+### ⚠️ A spec that needs a service you didn't start isn't a pass
+
+A failure like `Failed to open TCP connection to localhost:9200 (Connection refused)` means a
+local service is down, not that the spec is irrelevant. Don't report "N-1 pass, the other needs
+X". Start the service, rerun the spec, and stop it afterward. Michael's review standard is that the
+PR is proven to work, so an environment gap is my job to close.
+
+For beehiiv swarm, Elasticsearch (searchkick, stands in for prod's OpenSearch) is an opt-in profile
+because it's heavy, so it's usually off:
+
+```bash
+cd ~/Projects/beehiiv/docker-swarm && scripts/start search   # wait for localhost:9200/_cluster/health (yellow is fine)
+# ...rerun the spec in the worktree...
+cd ~/Projects/beehiiv/docker-swarm && scripts/stop search    # always stop it; Michael doesn't want the resource hit
+```
+
+(#34099, 2026-11-09: the dream editor posts search spec, 9/9 once ES was up.)
+
 ## ⚠️ Never diff a PR with two dots
 
 `gh pr diff` is safe — GitHub computes it from the merge base. **Raw `git diff` in the worktree is
