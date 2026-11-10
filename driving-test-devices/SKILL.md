@@ -97,6 +97,14 @@ looked like a bug).
 **`tree` lists every mounted view, including ones off screen** (a pager's neighbouring pages,
 a hidden sidebar). A label in `tree` is not proof it is visible: confirm with `shot`.
 
+**Dark mode on iOS, without touching Settings:** WDA switches the whole device's appearance,
+and apps that follow the system redraw live (iPhone 15, iOS 27.2, 2026-11-10):
+
+```bash
+curl -s -X POST -H 'Content-Type: application/json' -d '{"name":"dark"}' http://claudias-iphone-15:8100/wda/device/appearance
+curl -s http://claudias-iphone-15:8100/wda/device/info | grep userInterfaceStyle   # check, and put back with "light"
+```
+
 **Starting the runner** (if `status` fails), in its tmux session, from the WDA folder:
 
 ```bash
@@ -431,5 +439,11 @@ thing software can't show is iPadOS's own response to the accelerometer.
   read:** switching back to barcode mode shows the sticker it already took, with no beep due.
   The camera's framing differs per screen (Check In, the inline field and the full-height QR
   modal), so a code centred on one can sit outside another's square.
+- **evolution-mobile, answering a field to test and setting it back is not a clean undo.** The
+  first answer stamps the task with `taskStarted` and `taskTechName` (the signed-in account), and
+  a dropdown's None clears only the answer: the task keeps `taskStatus: Pending`, both stamps,
+  and the room's installer gains that person (its tile initials change, and it counts under
+  Mine). Found reviewing #403 (2026-11-10, room 107). Pick a task that already has a tech, or
+  say in the review what was left behind. Save the room's JSON from the db (recipe above) first.
 - **evolution-mobile**: DEV app `com.evotechapps.evolution.dev`; more in that project's memory
   (`ios-automation.md`, `device-testing-photos.md`).
