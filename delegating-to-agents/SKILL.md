@@ -97,7 +97,9 @@ example: beehiiv milestone 4, Nov 9 (`swarm/tmp/plans/granular-permissions/M4-LA
      (~6 s). It loads `swarm_test<n>` from `db/structure.sql` and writes `tmp/test_env_number`. `database.yml` reads
      that file, so rspec, `rails runner` and `bin/update`'s test migrate all use it with no prefix. Put the number in
      the brief. `TEST_ENV_NUMBER` overrides the file, and `bin/test-db off` drops the database. Rerun `bin/test-db <n>`
-     to reload after a schema change. Until the PR merges, a lane can cherry-pick its two commits.
+     to reload after a schema change. Until the PR merges, a lane takes the two files as unstaged local edits
+     (`git checkout origin/<branch> -- config/database.yml bin/test-db && git restore --staged ...`), never committed,
+     so they don't ride into its PRs.
    - **Still shared:** Redis (cache db 11 is flushed before every example, BEE-28496) and ClickHouse/PeerDB
      (BEE-28497). Keep `apiary: true` and `spec/peerdb` specs on `swarm_test`, one lane at a time.
    - **Trap:** a `DATABASE_URL` override moves only `primary` (`primary_follower` stays on `swarm_test`), which is
