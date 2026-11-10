@@ -239,6 +239,16 @@ git diff --stat -- <file>           # MUST be empty — proves a clean restore
 Leave the shared checkout exactly as you found it. If you ever need to look at something there,
 read it — do not check out, do not edit.
 
+### ⚠️ CI checks the merge with main, not the branch
+
+GitHub Actions checks out `refs/pull/<N>/merge`, so files that landed on `main` after the branch forked are checked too. A
+repo-wide check (formatter, lint) can pass in a worktree of the branch and still fail in CI. When you reproduce a red job
+locally, read the job log for the failing **file** first; if `git merge-base --is-ancestor <file's last main commit> <branch>`
+says no, the fix is "merge main, then rerun the tool", not a code change in the PR.
+
+(#34170, 2026-11-09: a Biome 2.6.4 upgrade passed all 10 CI commands locally; CI still failed formatting on a test file that
+merged to `main` an hour after the branch forked.)
+
 ### ⚠️ A spec that needs a service you didn't start isn't a pass
 
 A failure like `Failed to open TCP connection to localhost:9200 (Connection refused)` means a
