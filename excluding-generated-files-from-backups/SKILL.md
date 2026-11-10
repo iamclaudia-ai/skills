@@ -1,6 +1,6 @@
 ---
 name: excluding-generated-files-from-backups
-description: "MUST be used when excluding files or folders from Time Machine or Backblaze, or when a backup is slow, huge, or keeps running. Excludes regenerable folders (node_modules, .git, venv, __pycache__, .next, .turbo, gitignored dist/build/coverage, Xcode DerivedData, OrbStack VM disk) by name: Time Machine via fast sticky xattr exclusions (an FSEvents watcher marks new folders instantly; a daily sweep backs it up), Backblaze via name rules in bzinfo.xml. Covers checking what is excluded, verifying Backblaze honors its rules, and why backupd burns CPU. Triggers on: time machine exclusion, exclude from backup, tmutil addexclusion, backupd high CPU, time machine slow, backup taking forever, backblaze exclude, bzinfo.xml, excludefname_rule, exclude node_modules from backup, exclude .git, backblaze file count, delete files from backblaze, backblaze version history, fswatch, watch for new folders, asimov, backup generated files, sticky exclusion, com_apple_backup_excludeItem."
+description: "MUST be used when excluding files or folders from Time Machine or Backblaze, or when a backup is slow, huge, or keeps running. Excludes regenerable folders (node_modules, .git, venv, __pycache__, .next, .turbo, gitignored dist/build/coverage, Xcode DerivedData, OrbStack VM disk) by name: Time Machine via fast sticky xattr exclusions (an FSEvents watcher marks new folders instantly; a daily sweep backs it up), Backblaze via name rules in bzinfo.xml. Covers checking what is excluded, verifying Backblaze honors its rules, why backupd burns CPU, and measuring a quiet-system baseline with backups and Spotlight off. Triggers on: baseline, system baseline, quiet baseline, pause backblaze, stop spotlight indexing, mdutil, bztransmit high CPU, Mac feels slow, disk activity, time machine exclusion, exclude from backup, tmutil addexclusion, backupd high CPU, time machine slow, backup taking forever, backblaze exclude, bzinfo.xml, excludefname_rule, exclude node_modules from backup, exclude .git, backblaze file count, delete files from backblaze, backblaze version history, fswatch, watch for new folders, asimov, backup generated files, sticky exclusion, com_apple_backup_excludeItem."
 ---
 
 # Excluding Generated Files from Backups
@@ -71,6 +71,28 @@ awk -F'\t' '$2=="+" && $4>="<yyyymmddHHMMSS GMT>" && $NF~/\/node_modules\//' \
 proves nothing; verify rules against uploads in `bz_done`. A full rescan (`*_root_filelist.dat.future`
 growing, `bzfilelist` running) holds uploads back until it finishes: on 2026-11-09 one ran from
 Nov 6 to past noon Nov 9 (70M lines) after iCloud re-downloaded offloaded files, with 1 upload all day.
+
+## Quiet baseline
+
+To see what "normal" load is without backups and indexing (and spot anomalies against it):
+`scripts/quiet.sh` (sudo: Spotlight indexing off, Backblaze unloaded and killed; turn TM's automatic
+backups off in Settings or `sudo tmutil disable`), then `scripts/baseline.py 180 quiet <out-dir>`
+(per-process CPU from `ps` cputime deltas, disk0 `iostat`, memory), then `scripts/restore.sh`.
+Rerun `baseline.py` with another label when the Mac feels slow and compare.
+
+vesuvius, 2026-11-10, quiet after a reboot: disk0 avg 66 tps / 1.1 MB/s (max 219 / 2.75), CPU 227% of
+one core (14% of 16): mds 45, WindowServer 32, mdsync 17, nsurlsessiond 12, cloudd 10. Before
+quieting, Spotlight's post-reboot reindex alone was 3-6K tps / 35-120 MB/s.
+
+- **Backblaze "Pause" doesn't stop `bztransmit`**: it sat at 100% of a core, no network, no user
+  files open. `bztransmit`/`bzfilelist` are reparented to launchd, so unloading `bzserv` alone leaves
+  them running; `quiet.sh` pkills them.
+- **`mdutil -a -i off` stops Spotlight's disk I/O but not its CPU**: `mds`, `mdsync` and new
+  `mdworker_shared` keep running (~70% of a core), and `/Volumes/Time Machine` stays enabled.
+- **Spotlight and TM stay off across reboots** until `restore.sh`; Backblaze comes back on reboot.
+- The Backblaze menu agent is in `~/Library/LaunchAgents`, not `/Library/LaunchAgents`.
+  `launchctl bootstrap` on something already loaded fails with "5: Input/output error": harmless.
+- `iostat` reprints its header every ~20 rows, and its first row is the since-boot average.
 
 ## Traps
 
