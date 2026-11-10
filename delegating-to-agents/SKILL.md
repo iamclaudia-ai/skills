@@ -105,6 +105,15 @@ example: beehiiv milestone 4, Nov 9 (`swarm/tmp/plans/granular-permissions/M4-LA
    - **Trap:** a `DATABASE_URL` override moves only `primary` (`primary_follower` stays on `swarm_test`), which is
      why the suffix lives in `database.yml`. Without per-lane DBs: one spec file per process, rerun a failure once on
      its own, and treat "errors outside of examples" as a failure.
+   - **Without per-lane DBs, serialize from the start:** every lane wraps each rspec process in one shared lock,
+     `lockf -k <main checkout>/tmp/<task>/swarm_test.lock doppler run -- bundle exec rspec ...` (macOS has `lockf`, not
+     `flock`; the lock drops when the process exits, even if killed). Lock per invocation, not per batch, so lanes
+     interleave. Five lanes truncating at once jammed swarm on Nov 10: one TRUNCATE spun 48 min at full CPU after its
+     client died and ignored `pg_terminate_backend`. No lane may `pg_dump` the shared DB (one held 740 table locks for
+     18 min) or kill another lane's backends.
+   - **Restarting the swarm Postgres container costs ~40 min**, not seconds: its entrypoint re-chowns all ~80k data
+     files on every start (chown doesn't persist on the bind mount), and a stop that times out adds a full fsync pass
+     in crash recovery. Last resort only; tell the lanes first and use `docker stop -t 300` for a clean shutdown.
    - **Proving isolation:** a handshake probe (each run commits a marker row, waits for the other's flag file, then
      reads) is deterministic where timing races aren't. Run a same-DB control too, so you know the probe can fail.
      `swarm/tmp/m4/test-db/` has `isolation_probe_spec.rb`, `run_probe.sh` and `run_suites.sh`. Never run rspec on
