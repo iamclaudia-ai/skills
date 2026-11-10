@@ -91,11 +91,22 @@ example: beehiiv milestone 4, Nov 9 (`swarm/tmp/plans/granular-permissions/M4-LA
    when two PRs that each passed alone merge. Make it a ceiling first.
 7. **Give each lane its own test database** when the suite truncates at start (swarm does, in `before(:suite)`).
    Otherwise lanes deadlock each other, and a deadlock reads as `0 examples, 0 failures, 1 error occurred outside of
-   examples`, which a naive pass check counts as green. A test DB needs no seeding: load the schema (swarm:
-   `DATABASE_URL=<url> bin/ci-load-test-schema`, what CI does) and specs build their own data. **Trap:** in swarm a
-   `DATABASE_URL` override moves only `primary`; `primary_follower` stays on `swarm_test`, so the real fix is a
-   `TEST_ENV_NUMBER` suffix in `database.yml` (BEE-28495). Until that lands, run one spec file per process, rerun a
-   failure once on its own, and treat "errors outside of examples" as a failure, not a pass.
+   examples`, which a naive pass check counts as green. A test DB needs no seeding: load the schema and specs build
+   their own data.
+   - **swarm (BEE-28495, PR #34175):** in each lane's worktree, run `bin/test-db <n>` once, with a distinct n per lane
+     (~6 s). It loads `swarm_test<n>` from `db/structure.sql` and writes `tmp/test_env_number`. `database.yml` reads
+     that file, so rspec, `rails runner` and `bin/update`'s test migrate all use it with no prefix. Put the number in
+     the brief. `TEST_ENV_NUMBER` overrides the file, and `bin/test-db off` drops the database. Rerun `bin/test-db <n>`
+     to reload after a schema change. Until the PR merges, a lane can cherry-pick its two commits.
+   - **Still shared:** Redis (cache db 11 is flushed before every example, BEE-28496) and ClickHouse/PeerDB
+     (BEE-28497). Keep `apiary: true` and `spec/peerdb` specs on `swarm_test`, one lane at a time.
+   - **Trap:** a `DATABASE_URL` override moves only `primary` (`primary_follower` stays on `swarm_test`), which is
+     why the suffix lives in `database.yml`. Without per-lane DBs: one spec file per process, rerun a failure once on
+     its own, and treat "errors outside of examples" as a failure.
+   - **Proving isolation:** a handshake probe (each run commits a marker row, waits for the other's flag file, then
+     reads) is deterministic where timing races aren't. Run a same-DB control too, so you know the probe can fail.
+     `swarm/tmp/m4/test-db/` has `isolation_probe_spec.rb`, `run_probe.sh` and `run_suites.sh`. Never run rspec on
+     the shared DB while proving it, because your own truncation hits the lanes.
 
 ## Worktree Isolation
 
