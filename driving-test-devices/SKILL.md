@@ -303,6 +303,35 @@ What is specific to Michael's desk:
   picks the best plugged-in mic). A session on 2026-11-07 left BlackHole as the system default
   input for a day. Through the room,
   an emulator booted while his headphones were the default looked "too faint": leakage.
+- **Something else in the room beeps at 2093 Hz now and then** (2026-11-10: a 110 ms burst
+  with nothing happening on the phone). Check every burst against a screenshot of a read.
+
+### Did the app interrupt other audio? Android's focus log
+
+A sound can be silent to the ear and still pause a tech's music, by taking audio focus.
+Android logs every focus request with its type; no music or microphone needed:
+
+```bash
+adb shell am force-stop <pkg>; <launch>; <open the screen>
+adb shell dumpsys audio > ./tmp/audio.txt       # literal path (dcg)
+grep -E "requestAudioFocus|abandonAudioFocus" ./tmp/audio.txt | grep <pkg>
+```
+
+`req=` is the gain asked for: 1 `GAIN` (others stop), 2 `GAIN_TRANSIENT` (others pause),
+3 `GAIN_TRANSIENT_MAY_DUCK`, 4 exclusive. No line at all is what `mixWithOthers` should give.
+The same dump lists `new player piid:… package:<pkg> type:android.media.AudioTrack` with
+millisecond timestamps, which show when each expo-audio player first actually played.
+Found evolution-mobile#390 (2026-11-10): a priming `play()` raced `setAudioModeAsync` (an
+`AsyncFunction`, its own queue) and asked for `GAIN_TRANSIENT` on the first scanner after
+every launch, on the Pixel and the S25.
+
+### Swapping one file to compare builds (A/B on device)
+
+To compare a change with `main` on the same screen, copy the other version of the file into the
+worktree and let Metro serve it, then **confirm what Metro serves** before believing a run:
+`curl -s 'http://localhost:8081/index.bundle?platform=android&dev=true&minify=false' -o ./tmp/b.js`
+and `grep -c` a string only one version has. Cold-start the app (`am force-stop`, then the
+dev-client URL) so the new bundle and new players load.
 
 ## Traps
 
@@ -390,5 +419,17 @@ thing software can't show is iPadOS's own response to the accelerometer.
 - **claudia-scan harness**: `com.evotechapps.claudiascan.harness`, launch args above, builds
   per its CLAUDE.md. Michael's printed stand sheet: QR (room 105), door sign "105", MAC label
   `00:1A:2B:3C:4D:5E`, Code 128 `ZNZTEST000105`.
+- **evolution-mobile, scanning without writing anything:** check which Zanzibar rooms already
+  own a QR sticker by reading the DEV app's own database, then scan the rig's new sticker only in
+  a room that has one: the read ends in "QR Code Mismatch" (Cancel), never an assign + check-in.
+  Copy the db with literal paths
+  (`adb exec-out run-as com.evotechapps.evolution.dev cat files/SQLite/evolution-production.db > ./tmp/db/x.db`,
+  and the `-wal` beside it), then
+  `sqlite3 ./tmp/db/x.db "SELECT room_number, json_extract(json_extract(data,'$.json'),'$.main.qrCode') FROM rooms"`.
+  On 2026-11-10: 101, 104, 105 (`demo105`), 108, 110, 401, DISH3, LOBBY, TEST had one; DISH did not.
+  A barcode field only saves on Save, so close it with ✕. **Check In's frozen still is not a
+  read:** switching back to barcode mode shows the sticker it already took, with no beep due.
+  The camera's framing differs per screen (Check In, the inline field and the full-height QR
+  modal), so a code centred on one can sit outside another's square.
 - **evolution-mobile**: DEV app `com.evotechapps.evolution.dev`; more in that project's memory
   (`ios-automation.md`, `device-testing-photos.md`).
