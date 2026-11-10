@@ -240,7 +240,8 @@ function pullCompanion(label: string, dir: string): void {
 /**
  * Link every global skill in the skills repo into ~/.claude/skills, and drop links
  * whose skill was renamed or deleted. Skills in project-skills.txt belong to one
- * project's .claude/skills, so they are never linked here.
+ * project's .claude/skills, so they are never linked here, and a global link left
+ * from before a skill joined that list is dropped too.
  */
 function linkSkills(repoDir: string): void {
   const active = join(HOME, ".claude/skills");
@@ -269,16 +270,26 @@ function linkSkills(repoDir: string): void {
       !existsSync(path)
     );
   });
+  const projectLinked = readdirSync(active).filter((name) => {
+    const path = join(active, name);
+    return (
+      projectOnly.has(name) &&
+      lstatSync(path).isSymbolicLink() &&
+      readlinkSync(path) === join(repoDir, name)
+    );
+  });
 
   if (CHECK_ONLY) {
     if (missing.length) console.log(`skills: would link ${missing.join(", ")}`);
     if (dangling.length) console.log(`skills: would unlink ${dangling.join(", ")} (gone from repo)`);
+    if (projectLinked.length) console.log(`skills: would unlink ${projectLinked.join(", ")} (project-only)`);
     return;
   }
   for (const name of missing) symlinkSync(join(repoDir, name), join(active, name));
-  for (const name of dangling) unlinkSync(join(active, name));
+  for (const name of [...dangling, ...projectLinked]) unlinkSync(join(active, name));
   if (missing.length) console.log(`skills: linked ${missing.join(", ")}`);
   if (dangling.length) console.log(`skills: unlinked ${dangling.join(", ")} (gone from repo)`);
+  if (projectLinked.length) console.log(`skills: unlinked ${projectLinked.join(", ")} (project-only)`);
 }
 
 // ── main ─────────────────────────────────────────────────────
