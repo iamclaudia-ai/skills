@@ -42,10 +42,12 @@ $S/scripts/review-status.sh <session id> <N>
 
 - **`start-review.sh <brief> "<title>"`** creates the session in the repo root, sends the brief
   **in the background** (`send_prompt` blocks until the reviewer's whole turn ends, which timed
-  out my Bash the first time), and checks the turn started. The reviewer's final message lands in
-  `<brief>.log` beside the brief when it finishes.
-- **`review-status.sh <session> [PR]`** prints `turnActive` (true = still working) and, with a PR
-  number, the last review GitHub recorded: author, state and first line.
+  out my Bash the first time), and checks the turn started. `<brief>.log` beside the brief gets
+  only errors: the backgrounded call prints nothing of the reviewer's reply.
+- **`review-status.sh <session> [PR]`** prints `turnActive` (true = still working); once the turn
+  has ended, the reviewer's final message (from `anima session get_history`); and with a PR number,
+  the last review GitHub recorded: author, state and first line. A reply of mine in a review thread
+  also counts as a review there (`iamclaudia-ai COMMENTED`), so read the author before the state.
 
 ## Steps
 
@@ -57,8 +59,8 @@ $S/scripts/review-status.sh <session id> <N>
 3. **Start it** with `start-review.sh`, and write the session ID in NOTES.
 4. **While it runs, its devices are its own.** Don't drive them, and plan my own work around it
    (screenshots on another device, or non-device work).
-5. **When it finishes** (`turnActive=false`, the log has its message): run `review-status.sh`
-   with the PR number. The author must be `kiliman` and the body must open with
+5. **When it finishes** (`turnActive=False`; a device review took 12 minutes to an hour on
+   2026-11-10): run `review-status.sh` with the PR number. The author must be `kiliman` and the body must open with
    `🤖 Reviewed by a Claudia agent on Michael's account`. Then read the whole review.
 6. **Act on it** with the `addressing-review-feedback` project skill: fix, verify on a device,
    reply in each thread, summary comment, `gh pr edit <N> --add-reviewer kiliman`. Then a
@@ -105,5 +107,6 @@ Michael's desk (2026-11-10; turntable arriving):
 
 - 2026-11-10: first run. #390 reviewer (`e33d59f0`) took about an hour, Yeti A/B included, and found a
   real bug (a priming `play()` raced `setAudioModeAsync` and took Android audio focus). Posted
-  correctly as kiliman. The fix went to a fresh re-reviewer (`b87eb965`), and #414 (no devices) ran
-  alongside (`177b429d`).
+  correctly as kiliman. The fix went to a fresh re-reviewer (`b87eb965`), which approved in 12
+  minutes and tested the QR modal by moving the QR on the iPad Mini's page. #414 (no devices) ran
+  alongside (`177b429d`) and approved in about 3 minutes.
