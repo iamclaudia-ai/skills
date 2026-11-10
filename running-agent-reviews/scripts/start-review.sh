@@ -19,7 +19,9 @@ echo "session $SID ($TITLE)"
 echo "# $(date '+%F %T') session $SID" >> "$LOG"
 nohup anima session send_prompt --sessionId "$SID" --cwd "$ROOT" --content "$(cat "$BRIEF")" >> "$LOG" 2>&1 &
 sleep 10
-if anima session get_info --sessionId "$SID" | grep -q '"turnActive": true'; then
+# get_info also lists every other active session with its own turnActive: read this one's only.
+if anima session get_info --sessionId "$SID" |
+  python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["session"].get("turnActive") else 1)'; then
   echo "running; check with: review-status.sh $SID <PR>"
 else
   echo "WARNING: turn not active after 10 s; check $LOG and: anima session get_info --sessionId $SID" >&2

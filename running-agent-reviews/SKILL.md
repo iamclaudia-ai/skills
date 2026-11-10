@@ -49,9 +49,39 @@ $S/scripts/review-status.sh <session id> <N>
   the last review GitHub recorded: author, state and first line. A reply of mine in a review thread
   also counts as a review there (`iamclaudia-ai COMMENTED`), so read the author before the state.
 
+### A queue of several PRs: lanes
+
+When there's a backlog (eight PRs on 2026-11-10), don't start reviewers by hand one at a time.
+`queue.sh` runs a **lane**: it starts each PR's reviewer when the one before has ended its turn,
+and writes every start and finish to `tmp/review-agent/queue.log`.
+
+```bash
+# from the repo root; briefs at tmp/review-agent/<PR>/PROMPT.md
+tmux new-session -d -s review-lane-devices \
+  "AFTER_PR=413 $S/scripts/queue.sh devices --after <running session id> 415 403 405; sleep 86400"
+tmux new-session -d -s review-lane-light "$S/scripts/queue.sh light 380 393; sleep 86400"
+```
+
+- **Two lanes:** `devices` (phones and iPads, one reviewer at a time) and `light` (no phones:
+  tooling, docs, the Mac's emulator or microphone), which runs alongside. `--after` makes a lane
+  wait for a reviewer already running (`AFTER_PR` names its PR for the log).
+- **Watch the log with Monitor**, so each finish wakes me to act on it:
+  `tail -n 0 -F tmp/review-agent/queue.log | grep --line-buffered -E "STARTED|DONE|ERROR|WARNING|FINISHED"`
+  (30-minute limit: re-arm it when it expires).
+- A lane moves on whatever the verdict. Changes requested don't hold the next review: I fix while
+  the next reviewer works, and the re-review joins a lane later.
+- Edit a lane's script only after its lane has finished: bash reads a running script as it goes.
+- **Read `.session.turnActive`** from `anima session get_info`. Its output also lists every other
+  active session with their own `turnActive`, so grepping for `"turnActive": true` matches whenever
+  *anything* is running (the first `start-review.sh` did that).
+
 ## Steps
 
-1. **Pick the PR** from the queue in `tmp/review-agent/NOTES.md`. A stack goes bottom up.
+1. **Pick the PR** from the queue in `tmp/review-agent/NOTES.md`. A stack goes bottom up, and
+   one reviewer may take a whole stack (one review per PR, each judged on its own diff), so the
+   device setup happens once. **Not ready for a reviewer:** a PR whose own description says its
+   device pass hasn't been done (#408, an unattended dependency sweep). That pass is the author's.
+   Do it first.
 2. **Write the brief** at `tmp/review-agent/<N>/PROMPT.md` from `templates/review-brief.md`.
    Fill in the branch, the devices it may use (or "no devices"), what to exercise, and what the
    PR's own *Not checked* line admits. Re-review: say which commit is the fix and to read the
@@ -82,6 +112,12 @@ Michael's desk (2026-11-10; turntable arriving):
 - **Metro ports:** the reviewer runs Metro from its worktree on **:8081**; mine (the main
   checkout) is on **:8082**. Each points its DEV apps at its own
   (`evolutionmobile-dev://expo-development-client/?url=http%3A%2F%2F192.168.1.248%3A<port>`).
+  A light-lane reviewer on the emulator takes **:8083**.
+- **`adb -s <serial>`, always,** in every brief: with two phones (and maybe the emulator) on USB, a
+  bare `adb` reaches a device another session is driving. Pixel `34061JEHN03815`, S25
+  `R3CXC0LS9BR`, emulator `emulator-5554`.
+- **The Pixel's DEV app is signed in as Michael** (`TechProfiles/1`), the S25's as me. A reviewer
+  must not send pushes from the Pixel's account: his own phones would get them.
 - **Move the target, not the phone.** The iPad Mini shows whatever HTML is POSTed to the Mac's
   `hello.ts` (port 8765, `tmp/ipad-rig/NOTES.md`), so a reviewer can move or resize a QR to fit a
   camera's square without anyone touching the rig. If the server isn't running, the page keeps the
@@ -110,3 +146,7 @@ Michael's desk (2026-11-10; turntable arriving):
   correctly as kiliman. The fix went to a fresh re-reviewer (`b87eb965`), which approved in 12
   minutes and tested the QR modal by moving the QR on the iPad Mini's page. #414 (no devices) ran
   alongside (`177b429d`) and approved in about 3 minutes.
+- 2026-11-10, afternoon: Michael asked to clear the whole backlog (eight PRs) before new tickets.
+  `queue.sh` lanes: devices (#415 → #403 → #405+#406 in one session, after #413's reviewer) and
+  light (#380 re-review on the emulator → #393 on the Mac's microphone). #408 held back: its own
+  device pass wasn't done.
