@@ -3,10 +3,9 @@
 #
 # usage: start-review.sh <brief.md> "<session title>" [repo root]
 #
-# `anima session send_prompt` blocks until the reviewer's whole turn ends (hours, with a
-# device pass), so it runs in the background. Its output (the reviewer's final message)
-# lands in <brief>.log beside the brief when the reviewer finishes: an empty log means
-# still running. Check with status.sh.
+# `anima session send_prompt` blocks until the reviewer's whole turn ends (up to an hour,
+# with a device pass), so it runs in the background. <brief>.log gets only errors: the
+# reviewer's final message comes from review-status.sh (session history).
 set -euo pipefail
 BRIEF=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 TITLE=$2
@@ -21,7 +20,7 @@ echo "# $(date '+%F %T') session $SID" >> "$LOG"
 nohup anima session send_prompt --sessionId "$SID" --cwd "$ROOT" --content "$(cat "$BRIEF")" >> "$LOG" 2>&1 &
 sleep 10
 if anima session get_info --sessionId "$SID" | grep -q '"turnActive": true'; then
-  echo "running; final message will land in $LOG"
+  echo "running; check with: review-status.sh $SID <PR>"
 else
   echo "WARNING: turn not active after 10 s; check $LOG and: anima session get_info --sessionId $SID" >&2
 fi
