@@ -180,6 +180,11 @@ adding one dated line.
 - `apps/orchid-v2/bundle-budget.json` caps total client JS; set it once per group from `bundle-report.mjs --check` in a
   CI-equivalent shell on the pinned Node, and add a dated sentence to its `//` history.
 - Orchid apps are Remix 2 (single fetch off everywhere); the React Router 8 migration retires Remix-internal advisories.
+- **The Docker images don't install the workspace the way dev and CI do.** They `pnpm deploy` from a generated
+  workspace file, so an override or pin in `pnpm-workspace.yaml` can be missing from the image even though every check
+  passed. The Nov 2026 batch took Orchid down on staging this way (two copies of React Router; fixed by #34287). Before
+  a group that touches an image's dependencies lands, check what the image will actually get with the
+  `debugging-swarm-docker-images` skill.
 - Every PR from main can fail on main-wide breakage (a cop-count spec, once); check whether main itself is red first.
 - Michael marks PRs ready and requests reviewers; PRs are created as drafts.
 
