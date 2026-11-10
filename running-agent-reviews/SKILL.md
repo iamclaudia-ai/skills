@@ -38,6 +38,7 @@ self-review pass (`self-reviewing-evolution-prs`), which still happens first.
 S=~/Projects/iamclaudia-ai/skills/running-agent-reviews
 $S/scripts/start-review.sh ./tmp/review-agent/<N>/PROMPT.md "Review #<N> as kiliman (<topic>)"
 $S/scripts/review-status.sh <session id> <N>
+python3 -I $S/scripts/resolve-merged-reviews.py [--dry-run]   # from the repo root
 ```
 
 - **`start-review.sh <brief> "<title>"`** creates the session in the repo root, sends the brief
@@ -97,6 +98,11 @@ tmux new-session -d -s review-lane-light "$S/scripts/queue.sh light 380 393; sle
    **new** session for the re-review (step 2): never reuse the first reviewer, which now has
    opinions about the code.
 7. **Approved:** merge as usual (`node scripts/my-prs.js` first, for merge order).
+8. **After merging, clear the finished reviewers** from Michael's session list:
+   `resolve-merged-reviews.py` resolves every open session in the workspace titled `Review #N` or
+   `Re-review #N` whose PR has merged (`anima session set_status --disposition resolved`, which
+   hides it and deletes nothing). It skips a session still mid-turn. `--dry-run` lists first.
+   Michael asked for this on 2026-11-10, when merged reviews were piling up in his active list.
 
 ## The rig, and who gets what
 
