@@ -6,3 +6,4 @@ using-react-doctor
 auditing-apps
 maintaining-raycast-extensions
 running-agent-reviews
+landing-cursor-pr-batches
