@@ -114,6 +114,11 @@ a restart is ~30 s (Docker cycling the container plus an 11 s entrypoint ownersh
   && chown -R postgres:postgres /to && chmod 700 /to'`. `COPYFILE_DISABLE=1` keeps `._*` files out;
   `chmod 700` matters, since Postgres refuses a data dir others can read. Put the pipeline in a script
   file (dcg trips on it inline, see `deleting-docker-resources`).
+- **Nothing in a Docker volume is backed up.** The whole VM is one sparse image
+  (`~/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data/data.img.raw`), which OrbStack keeps out of
+  Time Machine (`orb config show`: `data_allow_backup: false`) and Backblaze skips (`bzinfo.xml`). Postgres
+  is covered by the Anima scheduler job "docker-swarm Postgres nightly dump" (3 AM), which runs
+  `scripts/backup-rotate` into `docker-swarm/backups/` (keeps 7). Check its history if dumps look stale.
 - A dump/restore isn't the shortcut it looks like: it needs Postgres running on the old storage
   first, and it drops the PeerDB replication slots.
 
