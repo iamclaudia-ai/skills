@@ -89,6 +89,13 @@ example: beehiiv milestone 4, Nov 9 (`swarm/tmp/plans/granular-permissions/M4-LA
    handoff --worktree`, which does bootstrap).
 6. **Look for shared counters before fanning out.** A spec that pins an exact count every lane changes turns main red
    when two PRs that each passed alone merge. Make it a ceiling first.
+7. **Give each lane its own test database** when the suite truncates at start (swarm does, in `before(:suite)`).
+   Otherwise lanes deadlock each other, and a deadlock reads as `0 examples, 0 failures, 1 error occurred outside of
+   examples`, which a naive pass check counts as green. A test DB needs no seeding: load the schema (swarm:
+   `DATABASE_URL=<url> bin/ci-load-test-schema`, what CI does) and specs build their own data. **Trap:** in swarm a
+   `DATABASE_URL` override moves only `primary`; `primary_follower` stays on `swarm_test`, so the real fix is a
+   `TEST_ENV_NUMBER` suffix in `database.yml` (BEE-28495). Until that lands, run one spec file per process, rerun a
+   failure once on its own, and treat "errors outside of examples" as a failure, not a pass.
 
 ## Worktree Isolation
 
