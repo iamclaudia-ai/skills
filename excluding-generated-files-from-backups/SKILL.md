@@ -104,8 +104,19 @@ Nov 6 to past noon Nov 9 (70M lines) after iCloud re-downloaded offloaded files,
   flag, so the handler tests `[ -d ]`. Renames report the new path.
 - Excluding `.git` means local-only branches, stashes and unpushed commits aren't backed up
   (working trees still are). Michael chose that (2026-11-09).
-- Postgres data (`docker-swarm/docker-volumes`) stays in Time Machine on purpose: TM copies from an
-  APFS snapshot, so the copy is crash-consistent. `docker-swarm/scripts/backup` is the clean dump.
+- **VM disk images: excluded from both, by folder** (2026-11-10). Backblaze's file-type list skips
+  `vmdk hdd vhdx vdi dmg sparseimage` but **not `.img` or `.qcow2`**: before the folder rules it had
+  uploaded 80.6 GB of Claude Desktop's VM (12 GB on disk, re-sent as it changed), 24.7 GB of Android
+  emulators and 6.2 GB of iOS simulators. Excluded now: OrbStack `…/HUAQ24HBR6.dev.orbstack` (TM by us
+  and by OrbStack's `data_allow_backup: false`; Backblaze `…/data/`), `~/Library/Application
+  Support/Claude/vm_bundles`, `~/.android/avd`, `~/Library/Developer` (TM) / its `CoreSimulator`
+  (Backblaze). Backblaze rules are `<bzdirfilter dir="<lowercased path>/" whichfiles="none" />` lines
+  in `do_backup`. To find new ones: `find ~ -type f -size +2G` for VM-ish extensions, then total
+  uploads per folder from `bz_done` (column 13 is bytes; `rg` takes 3 s where `cat` timed out).
+- **Data inside containers is in no backup**, so it's dumped out to files that are:
+  `docker-swarm/scripts/backup-rotate` (Postgres) and `backup-floci` (uploads), nightly via the
+  Anima scheduler. TM *did* hold crash-consistent copies of the old Postgres bind mount (it copies
+  from an APFS snapshot); Backblaze's file-by-file copies weren't.
 - Spotlight exclusions (System Settings → Spotlight → Search Privacy) are separate and root-only to
   script; verify one with `mdfind -count -onlyin <dir> 'kMDItemContentTypeTree == "public.item"'`
   (0 = excluded; check a control folder, since a bad query also returns 0).

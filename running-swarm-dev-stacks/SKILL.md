@@ -119,6 +119,12 @@ a restart is ~30 s (Docker cycling the container plus an 11 s entrypoint ownersh
   Time Machine (`orb config show`: `data_allow_backup: false`) and Backblaze skips (`bzinfo.xml`). Postgres
   is covered by the Anima scheduler job "docker-swarm Postgres nightly dump" (3 AM), which runs
   `scripts/backup-rotate` into `docker-swarm/backups/` (keeps 7). Check its history if dumps look stale.
+  Uploads in Floci (local S3, `docker_floci_data`, ~14 GB, mostly podcast audio) are covered by
+  "docker-swarm Floci uploads backup" (3:15 AM), `scripts/backup-floci` → `backups/floci/` (incremental
+  `aws s3 sync`, never deletes, ~75 s when nothing is new).
+- **Specs upload into the dev bucket.** Test and dev share Floci's `beehiiv-development`, so fixture
+  images pile up: 52K spec publications × 3 `*pixel.png` copies in five days, against a few hundred
+  real uploads (BEE-28529). A huge object count in the dev bucket is that, not real data.
 - A dump/restore isn't the shortcut it looks like: it needs Postgres running on the old storage
   first, and it drops the PeerDB replication slots.
 
