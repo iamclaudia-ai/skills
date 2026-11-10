@@ -31,7 +31,7 @@ def udp_rows() -> list[tuple[str, str, str]]:
     for line in run(["/usr/sbin/lsof", "+c", "0", "-n", "-P", "-iUDP"]).splitlines()[1:]:
         f = line.split()
         if len(f) >= 9:
-            rows.append((f[0], f[1], f[8]))
+            rows.append((f[0].replace("\\x20", " "), f[1], f[8]))
     return rows
 
 
