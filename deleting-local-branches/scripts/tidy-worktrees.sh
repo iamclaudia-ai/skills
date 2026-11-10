@@ -36,9 +36,15 @@ remove)
     if [[ -n $(git -C "$wt" status --porcelain --untracked-files=no) ]]; then
       echo "SKIP $wt: tracked changes"; continue
     fi
-    files=( ${(f)"$(cd "$wt" && { find tmp packages/*/tmp -type f 2>/dev/null | grep -v node_modules; git ls-files --others --exclude-standard; } | sort -u)"} )
+    all=( ${(f)"$(cd "$wt" && { find tmp packages/*/tmp -type f 2>/dev/null | grep -v node_modules; git ls-files --others --exclude-standard; } | sort -u)"} )
+    # A symlink holds nothing of its own: a worktree's `node_modules` is usually one into the
+    # main checkout, and git lists it as untracked (`node_modules/` ignores directories only).
+    # cp would follow it and fail on the directory, so links are left out of the archive.
+    files=() links=()
+    for f in $all; do if [[ -L "$wt/$f" ]]; then links+=$f; else files+=$f; fi; done
     echo "== $wt -> $archive/$name (${#files} files)"
     for f in $files; do echo "   $f"; done
+    for f in $links; do echo "   (symlink, not archived) $f -> $(readlink "$wt/$f")"; done
     (( commit )) || continue
     for f in $files; do
       mkdir -p "$archive/$name/${f:h}" && cp -p "$wt/$f" "$archive/$name/$f" || { echo "COPY FAILED $f; keeping $wt"; continue 2; }

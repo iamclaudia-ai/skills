@@ -90,6 +90,12 @@ zsh $S remove <main checkout> <worktree>...            # dry run: lists what it 
 zsh $S remove --commit <main checkout> <worktree>...   # archive to <main>/tmp/worktree-archive/, cmp, remove
 ```
 
+Symlinks are listed but never archived (they hold nothing of their own). A worktree's
+`node_modules` is usually a link into the main checkout, and git lists it as untracked because
+`node_modules/` in `.gitignore` matches directories only; until 2026-11-10 `cp` followed it and
+the remove stopped with `COPY FAILED node_modules`. Removing the worktree deletes the link, not
+the main checkout's `node_modules`.
+
 Remove only worktrees whose PR is **merged or closed** and that have no tracked changes (the
 script skips those anyway). Leave a worktree with an open PR: another session is working in it.
 Then delete the branches: `merged` for merged PRs, `delete` for the rest. **Pre-PR branches**
