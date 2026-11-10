@@ -113,7 +113,9 @@ example: beehiiv milestone 4, Nov 9 (`swarm/tmp/plans/granular-permissions/M4-LA
      18 min) or kill another lane's backends.
    - **Restarting the swarm Postgres container costs ~40 min**, not seconds: its entrypoint re-chowns all ~80k data
      files on every start (chown doesn't persist on the bind mount), and a stop that times out adds a full fsync pass
-     in crash recovery. Last resort only; tell the lanes first and use `docker stop -t 300` for a clean shutdown.
+     in crash recovery (80+ min on Nov 10). Last resort only; tell the lanes first and stop Postgres cleanly
+     (`docker exec -u postgres <container> pg_ctl stop -m fast`), which skips crash recovery. Setting
+     `recovery_init_sync_method=syncfs` makes recovery's sync take seconds instead of an fsync per file.
    - **Proving isolation:** a handshake probe (each run commits a marker row, waits for the other's flag file, then
      reads) is deterministic where timing races aren't. Run a same-DB control too, so you know the probe can fail.
      `swarm/tmp/m4/test-db/` has `isolation_probe_spec.rb`, `run_probe.sh` and `run_suites.sh`. Never run rspec on
