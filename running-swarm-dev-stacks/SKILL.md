@@ -1,6 +1,6 @@
 ---
 name: running-swarm-dev-stacks
-description: "MUST be used when starting, stopping, restarting or checking beehiiv's local dev stack (swarm API, client, orchid, Sidekiq workers), in the main checkout or a worktree, and when reading a service's output. Covers the `swarm` CLI from Michael's swarm-tools repo: one tmux session per instance (swarm-dev-N, ports 3000+N*100, app-N.localhiiv.com), api + client by default, orchid and workers on demand, `swarm logs` instead of pane numbers, `swarm status` memory, the workers guard (one shared Redis queue), why REDIS_URL must never be split per instance (Flipper flags live there), and stale-worktree symptoms. Triggers on: swarm start, swarm stop, swarm restart, swarm kill, swarm status, swarm logs, swarm api, start the dev server, start swarm, run the app locally, local dev stack, dev instance, instance number, worktree instance, app-1.localhiiv.com, swarm-dev, tmux pane, API pane, client pane, start workers, sidekiq locally, jobs not running, start orchid, orchid locally, PendingMigrationError, port 3000 in use, server.pid, parallel agents, parallel worktrees, dev stack memory."
+description: "MUST be used when starting, stopping, restarting or checking beehiiv's local dev stack (swarm API, client, orchid, Sidekiq workers), in the main checkout or a worktree, and when reading a service's output. Covers the `swarm` CLI from Michael's swarm-tools repo: one tmux session per instance (swarm-dev-N, ports 3000+N*100, app-N.localhiiv.com), api + client by default, orchid and workers on demand, `swarm logs` instead of pane numbers, `swarm status` memory, the workers guard (one shared Redis queue), why REDIS_URL must never be split per instance (Flipper flags live there), and stale-worktree symptoms. Triggers on: swarm start, swarm stop, swarm restart, swarm kill, swarm status, swarm logs, swarm api, start the dev server, start swarm, run the app locally, local dev stack, dev instance, instance number, worktree instance, app-1.localhiiv.com, swarm-dev, tmux pane, API pane, client pane, start workers, sidekiq locally, jobs not running, start orchid, orchid locally, test an orchid PR, review an orchid change, publication site locally, localhiiv.com refused to connect, PendingMigrationError, port 3000 in use, server.pid, parallel agents, parallel worktrees, dev stack memory."
 ---
 
 # Running swarm dev stacks
@@ -49,6 +49,8 @@ From an agent's Bash tool, `start` never attaches (no TTY, `$TMUX` set); it prin
 
 - **api, client**: always started. That's 90% of the work.
 - **orchid**: proxy + v1 + v2 in one pane. Browse publications at `<pub>.localhiiv.com:<base+2>`.
+  It is NOT started by default, so testing or reviewing anything under `apps/orchid-*` (publication
+  sites) needs `swarm start N orchid` (or `--orchid`); without it, publication URLs refuse to connect.
 - **workers**: ONE Sidekiq process for every queue (~0.5 GB). The queue list is built from
   `config/sidekiq/*.yml` at launch, so it never misses a queue.
 - **workers-full**: `Procfile.dev`'s process-per-queue fleet (~8 GB idle). Almost never needed.
