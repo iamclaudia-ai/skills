@@ -98,6 +98,25 @@ check this before booting.)
 - **Ports**: frees only listeners. Never kill a port with plain `lsof -t -i tcp:PORT`, which also
   matches the browser connected to it.
 
+## Shared Postgres: a named volume, not a bind mount
+
+Since 10 Nov 2026 the data lives in the volume `docker-swarm_postgres17-data` (beehiiv/docker-swarm#1),
+not `docker-volumes/postgresql`. On the bind mount every file op went through OrbStack's virtiofs:
+each start re-chowned ~67k files (25–57 min), and after a night of lanes TRUNCATE-ing `swarm_test`
+(~57k relation files) crash recovery ran for hours. On the volume, the same WAL replay took 1.9 s, and
+a restart is ~30 s (Docker cycling the container plus an 11 s entrypoint ownership walk).
+
+- `stop_grace_period: 2m` lets it shut down cleanly; a clean stop skips recovery entirely.
+- **Copying a data dir into a volume:** don't `cp -a` from a bind mount inside a container. It
+  managed ~1.5 files/s. Let macOS read the files and stream one tar into the VM, which took 49 s for
+  1.9 GB / 67k files: `COPYFILE_DISABLE=1 tar --create --directory=<dir> --file=- . | docker run --rm -i
+  … -v <volume>:/to <image> -c 'tar --extract --file=- --directory=/to --warning=no-unknown-keyword
+  && chown -R postgres:postgres /to && chmod 700 /to'`. `COPYFILE_DISABLE=1` keeps `._*` files out;
+  `chmod 700` matters, since Postgres refuses a data dir others can read. Put the pipeline in a script
+  file (dcg trips on it inline, see `deleting-docker-resources`).
+- A dump/restore isn't the shortcut it looks like: it needs Postgres running on the old storage
+  first, and it drops the PeerDB replication slots.
+
 ## Don't
 
 - Run `pnpm dev:workers` (the 8 GB fleet) or `dev:api`/`dev:client` by hand next to an instance.
