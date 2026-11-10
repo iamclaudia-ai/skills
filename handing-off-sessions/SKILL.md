@@ -58,8 +58,11 @@ anima session handoff --title "M7: ENT-754 roles" --promptFile tmp/m7/HANDOFF.md
 
 - `sessionId` is filled in from `$ANIMA_SESSION_ID`. A relative `--promptFile` resolves against
   my session's folder.
-- The new session takes my folder, agent, model and permission profile. Override with
+- The new session takes my agent, model and permission profile, and my **workspace's** folder. Override with
   `--targetCwd`, `--model` or `--profile` only when the next phase really needs it.
+- **In a worktree, always pass `--targetCwd "$PWD"`** (or `--worktree <my branch>`, which reuses it). Without it the
+  new session starts in the workspace root, the main checkout, not my worktree, and works on whatever branch is
+  checked out there (three beehiiv M4 lanes hit this on Nov 9; anima#157).
 - Short prompts can go inline with `--prompt "..."` instead.
 - Name the title after the work, like Michael would (`"M7: ENT-754 roles"`), not after the act
   of handing off.
@@ -79,7 +82,8 @@ anima session handoff ... --worktree feat/r2-phase2 --worktreeBase origin/main
   it), and starts the new session there. The repo is my workspace's root. It can't be combined
   with `--targetCwd`.
 - The bootstrap links the main checkout's `tmp/` into the worktree, so the HANDOFF.md and NOTES.md
-  I point at are right there, and seeds CodeGraph when the repo has an index. A project can
+  I point at are right there (unless the repo tracks files in `tmp/`, like swarm's `tmp/.keep`: then nothing is
+  linked, and the `delegating-to-agents` lanes section has the per-folder workaround), and seeds CodeGraph when the repo has an index. A project can
   replace it with an executable `tmp/scripts/create_worktree` (see the anima CLAUDE.md).
 - Any profile but yolo gets the folder pre-trusted, so the new session doesn't stall on Claude
   Code's trust dialog.
