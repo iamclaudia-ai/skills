@@ -113,3 +113,8 @@ All in `~/Projects/beehiiv/swarm-tools/bin` (kiliman/swarm-tools, issue #7, PR #
   and `rm -rf` outside `/tmp` (move to `~/.Trash/` instead). Edit scripts that contain `sqlite3` or
   `cp` calls with the Edit/Write tools, not python-in-a-heredoc: dcg parses the heredoc text.
 - The Anima scheduler keeps only the first 4 KB of a task's output: log to a file, print a summary.
+- A big first sweep is slow: archiving and removing 43 worktrees took ~13 min, past the Bash
+  tool's 10-min cap (the tool reports exit 143 but the sweep keeps running; wait on its pid). A
+  nightly run removes a few and stays well inside the task's 30-min timeout.
+- Removed worktrees don't free disk right away: Time Machine's hourly local snapshots
+  (`tmutil listlocalsnapshots /`) keep the blocks for ~24 h. Judge the win by tomorrow's `df`.
