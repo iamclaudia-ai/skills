@@ -305,6 +305,26 @@ that arms this — but knowing the base is stale is not the same as remembering 
 
 ## Submitting Reviews (Recommended Pattern)
 
+### ⚠️ Posting as a different account: `GH_AS`, never `GH_TOKEN`
+
+Michael's `gh` wrapper (`~/dotfiles/scripts/gh`) picks the account from the current directory and
+**drops any `GH_TOKEN` you pass in**. So `GH_TOKEN=$(gh auth token --user iamclaudia-ai) gh ...`
+quietly runs as the directory's account. Use the wrapper's own override, which also reaches
+extensions like `gh comment`:
+
+```bash
+GH_AS=iamclaudia-ai gh api user --jq .login          # prints "👤 gh as iamclaudia-ai" and the login
+GH_AS=iamclaudia-ai gh api repos/<owner>/<repo> --jq .permissions   # can this account even see it?
+```
+
+**Run both checks before posting anything.** A personal repo of Michael's (e.g. `kiliman/swarm-tools`)
+can be private with Michael as its only collaborator. iamclaudia-ai then gets a 404, and Michael can't
+approve a PR that was opened under his own account. Granting access means a collaborator invite from
+Michael's account that iamclaudia-ai then accepts. That's an access change, so ask him first.
+
+(swarm-tools #10, 2026-11-11: a `GH_TOKEN` override posted a review as kiliman. The approval was then
+refused as self-approval, and the permission check that "proved" admin access had also run as kiliman.)
+
 ### ✅ Split process for APPROVE / REQUEST_CHANGES (preferred)
 
 **Do NOT use `gh comment review --event APPROVE` to approve.** Observed 2026-05-29 (PRs #24710, #24706): the extension's APPROVE _event_ is flaky — it double-submitted the approval on one PR, and on another the approval never surfaced in the GitHub web UI even though the API reported `APPROVED` (Michael had to approve manually). The inline _comments_ landed fine both times — it's the decision event specifically that misbehaves.
