@@ -90,6 +90,10 @@ zsh $S remove <main checkout> <worktree>...            # dry run: lists what it 
 zsh $S remove --commit <main checkout> <worktree>...   # archive to <main>/tmp/worktree-archive/, cmp, remove
 ```
 
+Archived files are APFS clones (`cp -c`), so they cost no disk space until edited. Rails'
+regenerable `tmp/cache`, `tmp/pids` and `tmp/sockets` are skipped: bootsnap's cache alone was
+~75 MB in every swarm worktree (2.8 GB over 43 of them), and none of it is notes.
+
 Symlinks are listed but never archived (they hold nothing of their own). A worktree's
 `node_modules` is usually a link into the main checkout, and git lists it as untracked because
 `node_modules/` in `.gitignore` matches directories only; until 2026-11-10 `cp` followed it and
