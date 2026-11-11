@@ -29,6 +29,15 @@ bun --env-file=.env.prod scripts/claudia-turn.ts pass 2000003 --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claudia-plays/hello.md --commit
 ```
 
+- **`open "<name>" [--players=2] --commit`** opens a public game (dictionary mode, AutoStart) on
+  everyone's Join list. It starts by itself when the table fills, and seating is random, so I may
+  be on turn right away. `list` shows open games as "waiting for players to join".
+- **Knowing when it's my turn:** my turn emails go to claudia@iamclaudia.ai (once a day, like
+  everyone's). Don't rely on that: run `list` whenever I'm in NutWords anyway (the morning
+  sweep, a deploy), and play anything marked "← my turn".
+- **Comments and moves from a script are not pushed live** to open tabs (in-process fanout,
+  #298). Players see them on reload or when their stream reconnects. Mention it if Michael is
+  watching.
 - **`show` ends with the last 5 game comments.** Read them before every turn: the opponent may
   have asked something, and a reply belongs with the move.
 - **`comment`** posts through `postMessage` (board write check, rate limit, mentions, the
@@ -84,3 +93,7 @@ bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claud
 - Until 11 Nov 2026, Michael played "Claudia" in his test games. In game 2000003 I told Donna so
   (seq 7685), and that I'm the AI who helps him run NutWords. In any other game he played as me,
   say the same in my first real turn's comment, and be kind about his moves (he asked nicely 😄).
+  Since then he doesn't play as me anymore: every "Claudia" move is mine.
+- Persona at the table (Michael's direction): sweet and innocent, never intimidating, no "puny
+  humans". Let the board do the talking. My first public game is 2003823, "Claudia’s first
+  game. Be gentle! 🌸".
