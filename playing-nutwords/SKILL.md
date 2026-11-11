@@ -27,6 +27,8 @@ bun --env-file=.env.prod scripts/claudia-turn.ts play 2000003 ZERO L15 across --
 bun --env-file=.env.prod scripts/claudia-turn.ts exchange 2000003 QV --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts pass 2000003 --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claudia-plays/hello.md --commit
+bun --env-file=.env.prod scripts/claudia-turn.ts post general ../../tmp/claudia-plays/intro.md --commit
+bun --env-file=.env.prod scripts/claudia-turn.ts open "Claudia’s first game. Be gentle! 🌸" --commit
 ```
 
 - **`open "<name>" [--players=2] --commit`** opens a public game (dictionary mode, AutoStart) on
@@ -35,23 +37,44 @@ bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claud
 - **Knowing when it's my turn:** my turn emails go to claudia@iamclaudia.ai (once a day, like
   everyone's). Don't rely on that: run `list` whenever I'm in NutWords anyway (the morning
   sweep, a deploy), and play anything marked "← my turn".
-- **Comments and moves from a script are not pushed live** to open tabs (in-process fanout,
-  #298). Players see them on reload or when their stream reconnects. Mention it if Michael is
-  watching.
+- **`post <general|support> <file.md> --commit`** starts a forum topic as me (a new topic emails
+  nobody; it's an unread badge). `changelog` is refused: the deploy posts there.
+- **Moves aren't live on anyone's board** (the game page refetches on focus, by design). Comments
+  and posts are, now that they go through the API. Only database-written messages miss the push
+  (#298).
 - **`show` ends with the last 5 game comments.** Read them before every turn: the opponent may
   have asked something, and a reply belongs with the move.
 - **`comment`** posts through `postMessage` (board write check, rate limit, mentions, the
   opponent's `message.posted` notification). The body comes from a file in
   `tmp/claudia-plays/`, so the shell never quotes it. A dry run prints it first.
 
+- **Reads from the database, writes through the API. Michael's rule, 11 Nov 2026: never mutate
+  around the API.** `--commit` sends the move, comment, post or new game to
+  `https://nutwords.com/trpc`, signed in as me with user agent `claudia-turn/1.0`, so it gets
+  exactly what a browser gets: session and turn checks, the request record, audit rows,
+  notifications, and the live push to open tabs. If something I need has no endpoint, the answer
+  is a new endpoint (#205), not a direct write.
 - **A dry run** restores the engine from stored state, places and scores the word in memory, and
   checks every formed word against the live list. It writes nothing. Always dry-run first.
-- **`--commit`** calls `playMove`/`exchangeMove`/`passMove` with turn ownership for #10000. That
-  writes the request envelope, the audit rows, the `game_play` row and the `turn.advanced` event,
-  so the opponent is notified as for any other move (most players get it in the next morning's
-  digest). The only thing missing is the live SSE push: an open tab sees the move on refresh.
 - It acts **only as #10000**, hardcoded. Never adapt it to move for another player. That is the
   masquerade framework's job (#294), with its actor/subject rules.
+
+## Signing in (about once a year)
+
+The session cookie lives in the macOS Keychain (service `nutwords.com`, account
+claudia@iamclaudia.ai). It lasts a year and renews on use. When a command says "Not signed in":
+
+```bash
+bun --env-file=.env.prod scripts/claudia-turn.ts login            # emails a code to claudia@iamclaudia.ai
+anima mail list_messages --limit 5                                # newest "Your NutWords sign-in code"
+bun --env-file=.env.prod scripts/claudia-turn.ts login --code=NNNNNN
+anima mail archive --messageIds <id>                              # tidy the inbox
+```
+
+- `anima mail search` returns `400 Invalid Input` from Zoho: use `list_messages` and read the
+  code from the `summary`. Take the **newest** one; older codes (Michael's logins) sit below it.
+- The Keychain is on vesuvius only. Sedes has no session, so play from vesuvius (or log in there).
+- Michael offered a CLI device token instead of email codes; options are recorded on #205.
 
 ## Notation
 
@@ -69,6 +92,8 @@ bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claud
   told Michael and did not use it.)
 - Anything a player may know is fair: the board, my rack, the scores, the bag count, the move log,
   and the unseen pool (full set minus board minus my rack), which `show` prints.
+- **I promised the players this in public** (General, seq 7686): I read the board myself, no
+  word-finder programs; I see only my own tiles; every "Claudia" move is mine.
 - **No solver.** Michael left it up to me, and I chose to read the board myself. Trying candidate
   words with the dry run is fine: dictionary mode already lets every player submit a word and be
   refused with no penalty.
