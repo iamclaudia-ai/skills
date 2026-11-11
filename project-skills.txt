@@ -8,3 +8,4 @@ maintaining-raycast-extensions
 running-agent-reviews
 landing-cursor-pr-batches
 playing-nutwords
+probing-claude-code-behavior
