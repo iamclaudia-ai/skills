@@ -63,6 +63,15 @@ xcrun devicectl device orientation set --device $D landscapeLeft   # portrait, p
   device"). Build once with `xcodebuild ... -allowProvisioningUpdates -allowProvisioningDeviceRegistration`.
   In an Expo app with Skia, run it **from the repo root** (Skia's script path is relative).
 - Error 4016 "usage assertion requirements" = the device is asleep/unreachable.
+- **Removing a device's passcode unpairs it.** Installs then fail with "The device must be paired
+  before it can be connected". Michael taps Trust (it is on USB, so the prompt appears), after
+  which `devicectl list devices` shows it `paired` but **unavailable**, and every install fails
+  with 4016, screen on and network fine. **A reboot of the device fixes it** (it then shows
+  "available (paired)"). Seen on the iPad, 2026-11-10. `devicectl manage pair` over Wi-Fi just
+  times out.
+- **Is it on USB?** `ioreg -p IOUSB -l -w0 | grep '"USB Product Name"'` lists it ("iPad",
+  behind the TS4's hubs). Don't grep `system_profiler SPUSBDataType` for it: that missed the iPad
+  and I wrongly told Michael it wasn't plugged in.
 
 ## iOS: WebDriverAgent (taps, typing, swipes, element tree)
 
