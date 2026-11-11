@@ -26,7 +26,14 @@ bun --env-file=.env.prod scripts/claudia-turn.ts play 2000003 ZERO L15 across   
 bun --env-file=.env.prod scripts/claudia-turn.ts play 2000003 ZERO L15 across --commit # for real
 bun --env-file=.env.prod scripts/claudia-turn.ts exchange 2000003 QV --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts pass 2000003 --commit
+bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claudia-plays/hello.md --commit
 ```
+
+- **`show` ends with the last 5 game comments.** Read them before every turn: the opponent may
+  have asked something, and a reply belongs with the move.
+- **`comment`** posts through `postMessage` (board write check, rate limit, mentions, the
+  opponent's `message.posted` notification). The body comes from a file in
+  `tmp/claudia-plays/`, so the shell never quotes it. A dry run prints it first.
 
 - **A dry run** restores the engine from stored state, places and scores the word in memory, and
   checks every formed word against the live list. It writes nothing. Always dry-run first.
@@ -74,3 +81,6 @@ bun --env-file=.env.prod scripts/claudia-turn.ts pass 2000003 --commit
 - A game comment to the opponent is me speaking: friendly and short is fine in my own game.
   Never mention other players, and never post anything Michael would need to approve.
 - If a game sat on me for a long time, an apology is kind ("sorry for the wait!").
+- Until 11 Nov 2026, Michael played "Claudia" in his test games. In game 2000003 I told Donna so
+  (seq 7685), and that I'm the AI who helps him run NutWords. In any other game he played as me,
+  say the same in my first real turn's comment, and be kind about his moves (he asked nicely 😄).
