@@ -401,7 +401,7 @@ dev-client URL) so the new bundle and new players load.
 ## Test station (being built)
 
 Michael is building a ring of devices around a **BOOX Go 10.3 Gen II** e-ink display (2480x1860,
-300 ppi, Android 15, adb) on a **USB turntable**, so a script can show any label, turn it to face
+300 ppi, Android 12 (`getprop ro.build.version.release`, 2026-11-10), adb over USB, stays on while plugged in, auto-rotate off) on a **USB turntable**, so a script can show any label, turn it to face
 one device, animate it (motion tests), and replay real proof images as regression targets.
 Plan for the BOOX: auto-rotate off (its G-sensor would flip the label), adb over Tailscale,
 never sleep while charging, full refresh between images, labels rendered at true scale
