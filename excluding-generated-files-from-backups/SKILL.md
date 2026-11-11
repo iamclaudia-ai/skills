@@ -78,7 +78,14 @@ To see what "normal" load is without backups and indexing (and spot anomalies ag
 `scripts/quiet.sh` (sudo: Spotlight indexing off, Backblaze unloaded and killed; turn TM's automatic
 backups off in Settings or `sudo tmutil disable`), then `scripts/baseline.py 180 quiet <out-dir>`
 (per-process CPU from `ps` cputime deltas, disk0 `iostat`, memory), then `scripts/restore.sh`.
-Rerun `baseline.py` with another label when the Mac feels slow and compare.
+Rerun `baseline.py` with another label when the Mac feels slow and compare. To see **which process**
+drives disk I/O (iostat only gives totals; `fs_usage`/`iotop` need root):
+`swiftc -O scripts/diskio.swift -o <out>/diskio && <out>/diskio 30` (per-process read/write MB/s via
+`proc_pid_rusage`). Write it with the Write tool: dcg blocks a heredoc whose body contains `>`.
+
+vesuvius, 2026-11-11, working (several swarm sessions, up a day): disk0 avg 4,539 tps / 66 MB/s
+(~70x quiet), CPU 28% of 16 cores, 83% of 128 GB free, no swap. The disk was codegraph: a newly
+started session's MCP daemon wrote 112 MB/s during its catch-up reconcile (1.2-1.7 GB index per worktree).
 
 vesuvius, 2026-11-10, quiet after a reboot: disk0 avg 66 tps / 1.1 MB/s (max 219 / 2.75), CPU 227% of
 one core (14% of 16): mds 45, WindowServer 32, mdsync 17, nsurlsessiond 12, cloudd 10. Before
