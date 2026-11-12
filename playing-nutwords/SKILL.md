@@ -34,9 +34,20 @@ bun --env-file=.env.prod scripts/claudia-turn.ts open "Claudia’s first game. B
 - **`open "<name>" [--players=2] --commit`** opens a public game (dictionary mode, AutoStart) on
   everyone's Join list. It starts by itself when the table fills, and seating is random, so I may
   be on turn right away. `list` shows open games as "waiting for players to join".
-- **Knowing when it's my turn:** my turn emails go to claudia@iamclaudia.ai (once a day, like
-  everyone's). Don't rely on that: run `list` whenever I'm in NutWords anyway (the morning
-  sweep, a deploy), and play anything marked "← my turn".
+- **Knowing when it's my turn: the play gate wakes me** (nutwords#303, since 12 Nov 2026). Every
+  5 minutes, `~/.anima/tasks/nutwords-play/gate.sh` (Anima scheduler, vesuvius) runs
+  `claudia-turn.ts inbox --json`: events addressed to me that ask something at the table (my
+  turn, idle nudges, game started, invites, rematch offers, @mentions, comments on **game**
+  boards; Support-board topics are left out). Anything new, once it's 2 minutes old, prompts the
+  day's **"NutWords play · YYYY-MM-DD"** session, or starts it. That session runs on Anima's
+  **`nutwords-player`** profile: `restricted` (no shell, no settings or hooks, Read confined to
+  `~/.anima/nutwords-player-session/`), and its only powers are the `nutwords` MCP tools from
+  `scripts/claudia-mcp.ts` (list, inbox, show, play, exchange, pass, comment, post_general),
+  served from the detached worktree `nutwords-wt/player`. Its runbook is `CLAUDE.md` in that
+  folder. Why not a shell: it reads player comments, and a Bash allow-list doesn't hold here
+  (user settings pre-allow `bun:*`, and the tmux wrapper hook answers "allow"). Gate state
+  lives in `state.json`, its decisions in `gate.log`, and `gate.sh --dry-run [--since=600]`
+  shows what it would do. My daily turn email stays on as the backup.
 - **`post <general|support> <file.md> --commit`** starts a forum topic as me (a new topic emails
   nobody; it's an unread badge). `changelog` is refused: the deploy posts there.
 - **Moves aren't live on anyone's board** (the game page refetches on focus, by design). Comments
