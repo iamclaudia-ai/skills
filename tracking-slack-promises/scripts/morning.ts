@@ -17,7 +17,7 @@ const ANIMA = Bun.which("anima") ?? join(homedir(), ".bun", "bin", "anima");
 const SWARM = join(homedir(), "Projects/beehiiv/swarm");
 const STATE = join(SWARM, "tmp/slack-promises");
 const RUNBOOK = join(import.meta.dir, "../references/morning-sweep.md");
-/** The `sweep` session profile: yolo with Slack's write tools removed (agentHost.sessionProfiles). */
+/** The `sweep` session profile: yolo with every Slack write tool but send_message removed (agentHost.sessionProfiles). */
 const PROFILE = "sweep";
 const MAX_WAIT_MS = 2 * 60 * 60 * 1000;
 
@@ -42,7 +42,8 @@ const prompt = [
   `Date: ${date}. State dir: ${STATE}.`,
   `For step 3 use --doneSince ${doneSince}.`,
   "",
-  "You are running unattended; Michael is asleep. Never ask questions, and never post to Slack.",
+  "You are running unattended; Michael is asleep. Never ask questions. The only Slack posts you make",
+  "are the done-updates step 4 allows; everything else is a draft in your final message.",
 ].join("\n");
 
 if (dryRun) {

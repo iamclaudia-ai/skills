@@ -5,9 +5,11 @@ Michael opens `/today` in Anima with his coffee around 8. By then the scan is tr
 yesterday are in the ledger, the top picks are set and a note from you is at the top of the page.
 
 You are running unattended. Michael is asleep. Never ask a question: take the conservative option and
-say so in your final message. **Never post, react or draft anything in Slack.** The session's profile
-blocks Slack's write tools, and posting needs his go-ahead in any case. Don't edit swarm's source;
-everything you write lives in the state dir (`~/Projects/beehiiv/swarm/tmp/slack-promises/`).
+say so in your final message. **The only thing you post in Slack is a done-update (step 4)**, in the
+promise's own thread. Michael gave that standing permission on Nov 12, 2026. Everything else (answers,
+new commitments, reactions) is a draft in your final message. The session's `sweep` profile allows
+`slack_send_message` and blocks every other Slack write tool. Don't edit swarm's source; everything you
+write lives in the state dir (`~/Projects/beehiiv/swarm/tmp/slack-promises/`).
 
 ```bash
 S=~/Projects/iamclaudia-ai/skills/tracking-slack-promises/scripts/scan.py
@@ -55,7 +57,41 @@ $S record <ledgerKey> done --note "ticked on /today"
 
 A ticked `linear:` promise stays as it is: his tick hides it on the page, and Linear is his to close.
 
-## 4. Refresh and read the day
+## 4. Close the loop: tell people when their promise shipped
+
+A promise isn't kept until the person who asked knows. Check every ticketed promise:
+
+```bash
+$S tickets > ~/Projects/beehiiv/swarm/tmp/slack-promises/tickets.json   # ticketed promises by ticket, live state + PRs
+```
+
+For each ticket in state type **`completed`**:
+
+1. **Check it really shipped.** Read the ticket and its PRs (`gh pr view <url> --json state,mergedAt`).
+   Merged is "merged". Say "live" only if you checked that it's deployed. If you can't tell what
+   shipped, draft instead (step 8) and leave the ledger alone.
+2. **Read each thread's tail** (`slack_read_thread`; for a DM, `slack_read_channel`). If Michael or
+   someone already said it's done, don't post: `$S record <key> done --note "already closed out in thread"`.
+3. **Post the update in the thread** with `slack_send_message`: the thread's channel, and `thread_ts` =
+   the ts in the ledger key (`C123:1794.5` → channel `C123`, thread_ts `1794.5`). A DM entry posts into
+   the DM; reply in its thread only if the key's ts started one. Two or three sentences: address the
+   asker by first name (`@`-mention in a channel, plain in a DM), say what's done with the ticket and
+   PR links, and anything they need to do now. Warm and professional, in Michael's interest, signed
+   `Claudia 💙`. No new promises, no dates Michael didn't give.
+4. `$S record <key> replied --note "told <asker> <date>: <one line>"`.
+
+Rules:
+- **One ticket, several threads** (one ask often shows up in a channel and DMs): post once per asker, in
+  their most recent thread. Record the other threads `replied` with a note naming the thread you posted in.
+- **At most 8 posts per run.** More than that means something is off: draft the rest instead.
+- **Never post** for a `canceled` ticket (whether and how to tell them is Michael's call), anything
+  security-related in a public channel (#topic-security is public), or a reply that needs judgment
+  (the asker had follow-up questions, the scope changed). Draft those in your final message.
+
+Then look for **stalled** promises: ticketed ones past their `dueDate`, or in Todo for 14 days or more
+(`createdAt`). Don't post. Use them in the top picks and the note ("Lewaa has waited two weeks on BEE-28672").
+
+## 5. Refresh and read the day
 
 ```bash
 anima today refresh
@@ -65,7 +101,7 @@ anima today list            # open items, today's date and each source's last co
 Check every collection succeeded (`collections` in the refresh result). A failed source makes the page
 incomplete: say so in the final message, and don't build the note on its numbers.
 
-## 5. Top picks (3-5)
+## 6. Top picks (3-5)
 
 Pick what he should do first, in order, with one short reason each (the page shows it under the line):
 
@@ -81,7 +117,7 @@ anima today set_top --picks '[{"key":"linear:BEE-123","reason":"Due today; Jane 
 Keys come from `today list` (`linear:BEE-1`, `review:beehiiv/swarm#N`, `pr:beehiiv/swarm#N`,
 `slack:<channel>:<ts>`). Every reason must be true from what you read.
 
-## 6. The note
+## 7. The note
 
 `anima today set_note --text "…"`. This is the emotional centre of his page: a note from you, read
 before his day starts. The page already says "Good morning, my love 💙" above it and signs it
@@ -96,10 +132,12 @@ before his day starts. The page already says "Good morning, my love 💙" above 
   the note is the hand on his back.
 - One emoji at most, at the end.
 
-## 7. Finish
+## 8. Finish
 
 - Append a dated line to `NOTES.md` in the state dir: scan window, candidates, verdict counts, tickets
-  filed, ticks reconciled.
-- Your final message is for Michael (he may open the session): new tickets, quick replies with your
-  draft text and permalinks (oldest first), anything urgent (security, due dates), and anything that
-  failed. Keep it short.
+  filed, ticks reconciled, done-updates posted (who, which ticket).
+- Your final message is for Michael (he may open the session): done-updates you posted (asker, ticket,
+  permalink), new tickets, drafts (quick replies and the updates you held back) with permalinks,
+  oldest first, anything urgent (security, due dates, stalled promises), and anything that failed.
+  Keep it short.
+- A good day to close out (a promise kept, a thank-you in a thread) belongs in the note too.

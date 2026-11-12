@@ -38,6 +38,8 @@ $S import triage.json            # apply verdicts to the ledger in bulk (keeps t
 $S record <key> ticketed --ticket BEE-123 --note "..."   # one decision (ticketed|done|dismissed|open)
 $S record <key> open --title "Reply to Jane: is it live?" --asker "Jane Doe"
 $S ledger --status open          # what's still owed with no ticket
+$S tickets                       # JSON: ticketed promises by ticket, live Linear state + PRs (run in swarm)
+$S record <key> replied --note "told Jane Nov 13"   # the asker was told it shipped
 ```
 
 This is a project skill (linked into swarm only), so `anima skills run` can't find it: run the scripts
@@ -47,12 +49,18 @@ by path.
 
 A scheduler task on vesuvius ("Morning sweep", cron `30 4 * * *`, local time) runs
 `bun scripts/morning.ts`. It starts a session in swarm named `Morning sweep · <date>` under the
-`sweep` profile (yolo with every Slack write tool disallowed, in `agentHost.sessionProfiles`), which
-follows **`references/morning-sweep.md`**: scan `--since-last`, triage, reconcile Michael's ticks from
-`/today` into the ledger, `today.set_top`, `today.set_note`. The launcher waits for the turn to end and
+`sweep` profile (yolo; every Slack write tool except `slack_send_message` disallowed, in
+`agentHost.sessionProfiles`), which follows **`references/morning-sweep.md`**: scan `--since-last`,
+triage, reconcile Michael's ticks from `/today` into the ledger, close the loop on shipped promises,
+`today.set_top`, `today.set_note`. The launcher waits for the turn to end and
 exits 1 unless the ledger shows a scan today and `/today` has today's note, so the scheduler's failure
 alert reaches Michael. `--dry-run` prints the prompt; `--no-wait` starts it and returns.
 
+- **Closing the loop** (`$S tickets`): when a ticketed promise's Linear ticket is Done, post a short
+  update in that promise's thread, signed `Claudia 💙`, then `record <key> replied`. Michael gave
+  standing permission for these done-updates on Nov 12, 2026; nothing else gets posted unasked
+  (canceled tickets, judgment calls and security topics in public channels stay drafts). The runbook
+  has the rules: verify it shipped, read the thread tail first, one post per asker, 8 per run at most.
 - **The dashboard reads the ledger:** an `open` entry is a promise on `/today`, shown by its `title`
   (falls back to `note`), with `asker` as who's waiting. Write both for every open item, with real names.
 - **The note must be true.** Only names, counts and facts the session read that morning. A GitHub handle
@@ -78,7 +86,8 @@ alert reaches Michael. `--dry-run` prints the prompt; `--no-wait` starts it and 
      `dueDate` when the promise named a day. Merge duplicates into one ticket that lists every asker.
      Existing open tickets assigned to Michael that came from a Slack ask get the label too.
    - **A reply or a one-minute action** (answer a question, say "it's live", tell someone to go ahead)
-     → no ticket. List them for Michael as quick replies and offer to draft them. Posting needs his go-ahead.
+     → no ticket. List them for Michael as quick replies and offer to draft them. Posting these needs his
+     go-ahead (done-updates for shipped tickets are the exception, see the morning sweep).
    - **Before sending any reply, read the conversation's tail** (`slack_read_thread`, or `slack_read_channel`
      for a DM) and re-check the facts it claims (tickets Done, PRs merged, no feature flag). A triage
      agent called a Sep 28 DM "unanswered" when Michael had already replied and been thanked.

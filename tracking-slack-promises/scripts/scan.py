@@ -17,15 +17,23 @@ Usage:
   scan.py import TRIAGE.json [--dir DIR]
   scan.py ledger [--status open] [--dir DIR]
 
+  scan.py tickets [--dir DIR]
+
 STATUS is one of: ticketed (a Linear ticket tracks it), done (finished, nothing
 to track), dismissed (not a promise or not Michael's), open (real promise, no
-ticket yet: rare, prefer ticketed).
+ticket yet: rare, prefer ticketed), replied (its ticket shipped and the asker
+was told in the thread).
+
+`tickets` prints JSON: every ticketed promise grouped by ticket, with the
+ticket's live Linear state and attached PRs, for the morning sweep's
+close-the-loop step.
 """
 
 import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -37,7 +45,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.http_retry.builtin_handlers import RateLimitErrorRetryHandler
 
 DEFAULT_DIR = Path.home() / "Projects/beehiiv/swarm/tmp/slack-promises"
-STATUSES = {"ticketed", "done", "dismissed", "open"}
+STATUSES = {"ticketed", "done", "dismissed", "open", "replied"}
 
 PROMISE = re.compile(
     r"\b(i['’]ll|i will|we['’]ll|we will|i can (take|look|do|get|handle|fix|check|add|help)"
@@ -385,6 +393,35 @@ def show_ledger(args):
               f"{entry.get('permalink') or ''}")
 
 
+TICKET_QUERY = """query($id:String!){issue(id:$id){identifier title url dueDate createdAt
+  completedAt canceledAt state{name type} assignee{name}
+  attachments{nodes{title url}}}}"""
+
+
+def ticket_status(args):
+    """Ticketed promises grouped by ticket, with the ticket's live state (runs `lin`, so cwd picks the account)."""
+    ledger = load_ledger(Path(args.dir))
+    groups = {}
+    for key, entry in ledger["threads"].items():
+        if entry.get("status") == "ticketed" and entry.get("ticket"):
+            groups.setdefault(entry["ticket"], []).append({"key": key, **{
+                field: entry.get(field) for field in ("title", "note", "asker", "where", "permalink", "decided_at")}})
+    out = []
+    for ticket, threads in sorted(groups.items()):
+        result = subprocess.run(["lin", "gql", TICKET_QUERY, json.dumps({"id": ticket})],
+                                capture_output=True, text=True, timeout=60)
+        try:
+            issue = json.loads(result.stdout)["issue"]
+            issue["prs"] = [a["url"] for a in issue.pop("attachments")["nodes"] if "/pull/" in (a["url"] or "")]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            issue = {"identifier": ticket, "error": (result.stderr or result.stdout).strip()[:200]}
+        out.append({"ticket": issue, "threads": threads})
+    print(json.dumps(out, indent=2))
+    finished = [g for g in out if (g["ticket"].get("state") or {}).get("type") in ("completed", "canceled")]
+    print(f"{len(out)} tickets ({sum(len(g['threads']) for g in out)} threads), {len(finished)} finished",
+          file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -406,10 +443,12 @@ def main():
     import_parser.add_argument("triage", help="JSON array of {key, verdict, existing_ticket, title, ...}")
     ledger_parser = sub.add_parser("ledger")
     ledger_parser.add_argument("--status")
-    for each in (scan_parser, record_parser, import_parser, ledger_parser):
+    tickets_parser = sub.add_parser("tickets")
+    for each in (scan_parser, record_parser, import_parser, ledger_parser, tickets_parser):
         each.add_argument("--dir", default=str(DEFAULT_DIR))
     args = parser.parse_args()
-    {"scan": scan, "record": record, "import": import_triage, "ledger": show_ledger}[args.command](args)
+    {"scan": scan, "record": record, "import": import_triage, "ledger": show_ledger,
+     "tickets": ticket_status}[args.command](args)
 
 
 if __name__ == "__main__":

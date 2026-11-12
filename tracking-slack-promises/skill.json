@@ -5,7 +5,7 @@
     "scan": {
       "script": "scripts/scan.py",
       "longRunning": false,
-      "description": "scan [--days 30 | --since-last] | import TRIAGE.json | record KEY STATUS [--ticket ID] [--note TEXT] [--title TEXT] [--asker NAME] | ledger [--status open]",
+      "description": "scan [--days 30 | --since-last] | import TRIAGE.json | record KEY STATUS [--ticket ID] [--note TEXT] [--title TEXT] [--asker NAME] | ledger [--status open] | tickets",
       "env": ["SLACK_USER_TOKEN"],
       "timeoutMs": 900000
     },
