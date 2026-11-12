@@ -57,6 +57,13 @@ Through the runner: `anima skills run tracking-slack-promises scan scan --days 8
      Existing open tickets assigned to Michael that came from a Slack ask get the label too.
    - **A reply or a one-minute action** (answer a question, say "it's live", tell someone to go ahead)
      → no ticket. List them for Michael as quick replies and offer to draft them. Posting needs his go-ahead.
+   - **Before sending any reply, read the conversation's tail** (`slack_read_thread`, or `slack_read_channel`
+     for a DM) and re-check the facts it claims (tickets Done, PRs merged, no feature flag). A triage
+     agent called a Sep 28 DM "unanswered" when Michael had already replied and been thanked.
+   - Replies go in the original thread (`thread_ts`); a DM with no thread gets a plain message. Sign
+     with `Claudia 💙`. For an open item, name the ticket and promise updates, not a date Michael didn't give.
+   - **Security disclosures in public channels** (#topic-security is public): keep them to ticket IDs
+     and severity, no reproduction details, while any fix is unmerged. Draft those for Michael.
 5. **Record.** Put each ticket ID into the triage JSON's `existing_ticket`, then `import` it. The
    ledger maps OPEN_* with a ticket to `ticketed`, without one to `open`.
 6. **Report:** the board link, new tickets, quick replies (oldest first, with permalinks), and
@@ -73,8 +80,8 @@ lin gql 'mutation($id:String!,$l:String!){issueAddLabel(id:$id,labelId:$l){succe
 
 ## How the scan works (and its blind spots)
 
-- The token has history scopes for every conversation type but **no `search:read`**, so it can't use
-  `search.messages`. It walks `users.conversations` (378 conversations, Nov 2026) and reads history
+- The token has history scopes for every conversation type but **no `search:read`** (as of 2026-11-12;
+  Michael is adding it), so it can't use `search.messages`. It walks `users.conversations` (378 conversations, Nov 2026) and reads history
   with `oldest=`. Bot DMs (GitHub, Linear) are skipped.
 - `conversations.history` returns thread parents only. Replies are fetched when Michael wrote the parent,
   is in `reply_users`, is mentioned in the parent, or the conversation is a DM. **Blind spot:** a thread
