@@ -80,15 +80,17 @@ lin gql 'mutation($id:String!,$l:String!){issueAddLabel(id:$id,labelId:$l){succe
 
 ## How the scan works (and its blind spots)
 
-- The token has history scopes for every conversation type but **no `search:read`** (as of 2026-11-12;
-  Michael is adding it), so it can't use `search.messages`. It walks `users.conversations` (378 conversations, Nov 2026) and reads history
-  with `oldest=`. Bot DMs (GitHub, Linear) are skipped.
-- `conversations.history` returns thread parents only. Replies are fetched when Michael wrote the parent,
-  is in `reply_users`, is mentioned in the parent, or the conversation is a DM. **Blind spot:** a thread
-  he never joined where someone @-mentions him in a reply. The Slack MCP search
-  (`slack_search_public_and_private` with `to:<@U06UAH8MM6H>`) can cover it by hand.
-- **Blind spot:** a thread started before the window whose new replies land inside it. Weekly runs
-  with overlap keep this small. Widen `--days` after a gap.
+- **Two passes.** The walk reads `users.conversations` (378 conversations, Nov 2026) with `oldest=`, skipping
+  bot DMs. `conversations.history` returns thread parents only, so replies are fetched when Michael wrote the
+  parent, is in `reply_users`, is mentioned in the parent, or the conversation is a DM. Then a **search pass**
+  (`search:read`, added 2026-11-12) runs `from:<@me> after:` and `<@me> after:` to catch what the walk can't:
+  his promise replies in threads that started before the window, and mentions in threads he never joined
+  (its first run found a review request in a channel thread). No `search:read` → the pass is skipped with a note.
+- `to:me` is useless here (765 hits a week, nearly all GitHub/Linear bot DMs); `@kiliman` misses mentions.
+- **Reopening:** a decided thread comes back only when someone *else* replies after the decision. `record`
+  stamps the decision time, so record after reading the tail. `import` uses the scan's last-seen time.
+- **New token not visible?** The Bash tool's environment predates `render-secrets`. Run the scan through
+  `zsh -ic '...'` to pick up a regenerated `SLACK_USER_TOKEN`.
 - DMs rarely use threads, so a DM candidate is a window of messages around the hit. Overlapping
   windows show the same promise twice, so dedupe when triaging.
 - Michael's Slack user is `U06UAH8MM6H`. Messages signed "Claudia 💙" are his commitments too.
