@@ -1,0 +1,13 @@
+{
+  "id": "tracking-slack-promises",
+  "description": "Find Slack threads where Michael promised something or was asked for something, and keep a ledger of what's decided.",
+  "commands": {
+    "scan": {
+      "script": "scripts/scan.py",
+      "longRunning": false,
+      "description": "scan [--days 30] | import TRIAGE.json | record KEY STATUS [--ticket ID] [--note TEXT] | ledger [--status open]",
+      "env": ["SLACK_USER_TOKEN"],
+      "timeoutMs": 900000
+    }
+  }
+}

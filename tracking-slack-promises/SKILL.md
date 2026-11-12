@@ -1,0 +1,88 @@
+---
+name: tracking-slack-promises
+description: "MUST be used when checking Slack for things Michael promised or was asked to do and may have forgotten, and when running the regular promise sweep. Scans every beehiiv Slack channel, private channel, DM and group DM he is in for his commitments (\"I'll take a look\", \"sure, assign it to me\") and requests aimed at him, triages them (open, tracked, done, dismissed) against Linear and GitHub, files Linear tickets for open promises with no ticket, labels them \"Slack promise\" so they show on his board, and keeps a ledger so the next sweep only shows new threads. Triggers on: slack promises, what did I promise, promised in slack, forgot to follow up, dropped the ball, requests in slack, open requests, unanswered DMs, did I say I'd do that, sweep slack, check my slack, follow-ups from slack, things I said yes to, catch me falling, promise board, slack promise board, slack follow-up tickets."
+---
+
+# Tracking Slack Promises
+
+Michael says "sure, we'll get to it" on Slack and then the request sinks under project work. This skill
+finds those threads, decides which are still owed, and puts the owed work on a Linear board so nothing
+depends on memory.
+
+## When to Use
+
+- The regular sweep (weekly is the intended cadence; first run was 60 days back).
+- Michael asks what he promised, what's waiting on him in Slack, or whether he dropped something.
+- Before a planning session, to put out-of-band promises next to the project work.
+
+## The Board
+
+- **Linear label `Slack promise`**, workspace-level (any team can use it), id `e9762c65-f9d2-46aa-bf8f-c22e2b55bce0`.
+- **Personal view "Slack promises"** (not shared): label + assignee me + not completed/canceled.
+  https://linear.app/beehiiv/view/slack-promises-7be22daf6cd7
+- A ticket counts as a Slack promise when the work was asked for in Slack and sits outside planned
+  project work. Don't tag project tickets (Custom Domains V3, granular permissions milestones) just
+  because someone mentioned them in Slack.
+
+## Command
+
+One script, `scripts/scan.py` (a `uv` script; needs `SLACK_USER_TOKEN`, the same token as `slack-reader`).
+State lives in `~/Projects/beehiiv/swarm/tmp/slack-promises/` (`--dir` to change it).
+
+```bash
+S=~/Projects/iamclaudia-ai/skills/tracking-slack-promises/scripts/scan.py
+$S scan --days 8                 # writes scan-<stamp>.md (read this) and .json; ~4-5 min
+$S import triage.json            # apply verdicts to the ledger in bulk
+$S record <key> ticketed --ticket BEE-123 --note "..."   # one decision (ticketed|done|dismissed|open)
+$S ledger --status open          # what's still owed with no ticket
+```
+
+Through the runner: `anima skills run tracking-slack-promises scan scan --days 8`.
+
+## Workflow
+
+1. **Scan.** `--days 8` for the weekly sweep (a day of overlap so nothing falls between runs). Threads
+   the ledger already decided are skipped unless they got new replies; `open` ones always come back.
+2. **Triage every candidate.** The regex is deliberately loose: on the first run only ~9% of
+   candidates were real. Up to ~40 threads, triage them yourself. Beyond that, split the report on
+   `## <n>. ` headers into ~50-thread chunks and run one agent per chunk in parallel with
+   `references/triage-prompt.md`. Verdicts: OPEN_PROMISE, OPEN_REQUEST, TRACKED, DONE, DISMISSED.
+3. **Check the open ones yourself** before acting: agents miss duplicates (one promise often shows
+   up in several threads and DMs) and sometimes call shipped work open.
+4. **Sort the open items into two piles:**
+   - **Real work → ticket.** `lin new -t BEE -a me --title ... --description-file ...`, then add the
+     label with the additive mutation (below). The description names who asked (they're who it gets
+     delivered to), quotes the promise with its date, links the thread, and states scope. Set a
+     `dueDate` when the promise named a day. Merge duplicates into one ticket that lists every asker.
+     Existing open tickets assigned to Michael that came from a Slack ask get the label too.
+   - **A reply or a one-minute action** (answer a question, say "it's live", tell someone to go ahead)
+     → no ticket. List them for Michael as quick replies and offer to draft them. Posting needs his go-ahead.
+5. **Record.** Put each ticket ID into the triage JSON's `existing_ticket`, then `import` it. The
+   ledger maps OPEN_* with a ticket to `ticketed`, without one to `open`.
+6. **Report:** the board link, new tickets, quick replies (oldest first, with permalinks), and
+   anything urgent (security, due dates). Update `NOTES.md` in the state dir.
+
+## Labelling without clobbering
+
+`lin update --labels` **replaces** an issue's label set. Add the label with:
+
+```bash
+lin gql 'mutation($id:String!,$l:String!){issueAddLabel(id:$id,labelId:$l){success}}' \
+  '{"id":"BEE-123","l":"e9762c65-f9d2-46aa-bf8f-c22e2b55bce0"}'
+```
+
+## How the scan works (and its blind spots)
+
+- The token has history scopes for every conversation type but **no `search:read`**, so it can't use
+  `search.messages`. It walks `users.conversations` (378 conversations, Nov 2026) and reads history
+  with `oldest=`. Bot DMs (GitHub, Linear) are skipped.
+- `conversations.history` returns thread parents only. Replies are fetched when Michael wrote the parent,
+  is in `reply_users`, is mentioned in the parent, or the conversation is a DM. **Blind spot:** a thread
+  he never joined where someone @-mentions him in a reply. The Slack MCP search
+  (`slack_search_public_and_private` with `to:<@U06UAH8MM6H>`) can cover it by hand.
+- **Blind spot:** a thread started before the window whose new replies land inside it. Weekly runs
+  with overlap keep this small. Widen `--days` after a gap.
+- DMs rarely use threads, so a DM candidate is a window of messages around the hit. Overlapping
+  windows show the same promise twice, so dedupe when triaging.
+- Michael's Slack user is `U06UAH8MM6H`. Messages signed "Claudia 💙" are his commitments too.
+- dcg blocks `python3 - <<EOF` heredocs. Write helper scripts to a file and run them.
