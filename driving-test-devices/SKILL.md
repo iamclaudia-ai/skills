@@ -407,8 +407,7 @@ Plan for the BOOX: auto-rotate off (its G-sensor would flip the label), adb over
 never sleep while charging, full refresh between images, labels rendered at true scale
 (3 in = 900 px).
 
-**Planned layout (Michael, 2026-11-08):** the USB turntable is **still in the mail** (due ~Nov 10).
-Until it arrives, Michael turns and moves the targets by hand. Once it's here, the BOOX and an **old
+**Layout (Michael, 2026-11-08; turntable in place 2026-11-11):** the BOOX and an **old
 iPad mini (2 or 3, iOS 12.5, reset for this) on a small tablet stand** sit **back to back on the
 turntable**, with the test phones around it. Turn it to face whichever device's camera is under
 test. The "TV" used to be a laptop screen, which is too big for the turntable. If the iPad mini
@@ -421,7 +420,34 @@ of the finished rig: record what it shows here.
   (3votech/evolution-mobile#411).
 
 Scanning and photos are core to the apps, so they get tested on real devices, not only in the
-Simulator. Turntable control interface: not documented yet; record it here when first used.
+Simulator.
+
+### The turntable (ComXim MT200RUBL20ProV3, first driven 2026-11-11)
+
+USB serial: a CH340 chip (`1a86:7523`, "USB2.0-Serial") at `/dev/cu.usbserial-*`, 115200 8N1.
+macOS's own driver handles it. `scripts/turntable.py` (a uv script with pyserial) drives it:
+
+    scripts/turntable.py where          # offset from zero, e.g. +15.0°
+    scripts/turntable.py goto 180       # absolute angle, refuses anything past ±180°
+    scripts/turntable.py 'CT+GETPN();'  # any raw command, prints the replies
+
+- **The tablets on it are cabled: never more than ±180° from zero** (Michael). Zero is saved at the
+  cable-neutral position (`CT+SETZERO();`, done 2026-11-11). `goto` works out the delta and turns
+  with `CT+TURNSINGLE(dir,angle);` itself, so the path is always known. Never use continuous mode.
+- Protocol: ASCII `CT+NAME(args);`. **The trailing `;` is required** (otherwise `CR+ERR=48`). The
+  table replies `CR+OK;` or `CR+ERR=<code>;`, then `CR+EVENT=TB_PAUSE;` / `CR+EVENT=TB_END;` when a
+  move finishes. It sends a heartbeat `#` every second (`###` once it hears nothing for 3 s), and
+  the script strips it. The degree sign comes back in GBK (`\xa1\xe3`).
+- `dir` 0 = + (the firmware calls it clockwise), 1 = −. Moves land exactly (+15.0 / −15.0).
+  At the default speed: about 14°/s plus ~3 s per move (90° 7.9 s; the 180° BOOX ↔ iPad swap 12.7 s).
+  `CT+SETSPEED(0-127);` can raise it.
+- It **beeps on every command**. `CT+SPKMUTE(1);` mutes it: do that before any sound test with the
+  Yeti, and `CT+SPKMUTE(0);` brings it back.
+- `CT+GETTBCONFIG();` returns an undocumented `CR+ERR=90`. Ignore it.
+- Docs: command list https://comxim.com/the-new-command-list/ and the dev kit
+  https://comxim.com/development-kit/. Working notes: evolution-mobile `tmp/turntable/NOTES.md`.
+- **Next: calibration.** Find the angle where each phone's camera sees the target square-on and
+  save it as a named station. Record the method and the stations here.
 
 **Rotation is done in software, no servo (decided 2026-11-01).** Turn the device's interface
 (`wda.py rotate`, `devicectl orientation set`, adb `user_rotation`) and render the e-ink pattern
