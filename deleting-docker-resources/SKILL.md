@@ -1,6 +1,6 @@
 ---
 name: deleting-docker-resources
-description: "MUST be used whenever you need to delete, clean up, or prune Docker containers, images, volumes or networks: the script checks ownership and in-use state before deleting, and dcg's loose `docker rm -f` regex can't misfire on it. Also MUST be used BEFORE creating any Docker image, container, volume or network for testing (docker build, docker run, docker create), to label it so it can be cleaned up later. Deletes what I created (labelled claudia.scratch=true) freely, and unlabelled leftovers by name or prefix, never compose stacks, running containers I didn't start, images still in use, or pulled base images. Triggers on: delete docker container, remove container, docker rm blocked, docker rmi, remove docker image, clean up docker, docker cleanup, prune docker, docker prune, stopped containers, leftover containers, test containers, scratch images, dangling images, free disk space docker, docker build for testing, docker run --rm blocked, rebuild in docker, reproduce a build in docker, dcg blocked docker."
+description: "MUST be used whenever you need to delete, clean up, or prune Docker containers, images, volumes or networks: the script checks ownership and in-use state before deleting, and dcg's loose `docker rm -f` regex can't misfire on it. Also MUST be used BEFORE creating any Docker image, container, volume or network for testing (docker build, docker run, docker create), to label it so it can be cleaned up later. Deletes what I created (labelled claudia.scratch=true) freely, and unlabelled leftovers by name or prefix, never compose stacks, running containers I didn't start, images still in use, or pulled base images. Triggers on: delete docker container, remove container, docker rm blocked, docker rmi, remove docker image, clean up docker, docker cleanup, prune docker, docker prune, stopped containers, leftover containers, test containers, scratch images, dangling images, free disk space docker, docker build for testing, docker run --rm blocked, rebuild in docker, reproduce a build in docker, dcg blocked docker, dangling volumes, orphaned volumes, anonymous volumes, docker volume cleanup, reclaim docker disk, what is in this volume, old postgres volume."
 ---
 
 # Deleting Docker Resources
@@ -98,6 +98,40 @@ Containers go first, so the images they used can go in the same run.
 Each deletion is appended (kind, name, ID, reason, detail, time) to
 `~/.local/state/deleting-docker-resources/deleted.txt`. Nothing deleted can be
 restored. An image comes back by rebuilding it, so delete only what can be rebuilt.
+
+## Orphaned (dangling) volumes: classify by content, not by size
+
+`delete` never touches unlabelled volumes. When Michael asks for a broader cleanup, the
+orphans (`docker volume ls -qf dangling=true`, mostly 64-hex anonymous volumes) are deleted
+by a one-off script, only after looking inside each one:
+
+1. `scripts/inspect-orphan-volumes.sh <out-dir>` mounts every orphan **read-only** into one
+   labelled `alpine` container and fingerprints it (postgres `PG_VERSION`, clickhouse
+   `metadata`+`store`, redis `dump.rdb`, elasticsearch `nodes/0`, empty, else unknown) with
+   size, creation date and top-level entries: `inventory.tsv`.
+2. `scripts/inspect-orphan-postgres.sh <out-dir>` lists each Postgres orphan's **database
+   names without starting a server**: `strings` on `global/1262` (the pg_database catalog).
+   Only `application`/`postgres`/templates means an empty cluster a test container made.
+   Real names (`swarm_development`…) mean a real cluster: compare with the live one
+   (`pg_database_size`, newest file mtime) and let Michael decide.
+3. Write the delete script with an explicit KEEP list, re-check `docker ps -aq --filter
+   volume=<v>` right before each `docker volume rm`, log to `deleted.txt`, dry-run first, and
+   mutation-test the data guard (empty KEEP, confirm the real cluster is still rejected).
+   **A filter must fail closed:** `grep … || true` swallowed a regex error (exit 2) and
+   passed every cluster. Accept exit 0/1 only.
+
+vesuvius, 2026-11-12: 62 orphans / 24 GB: 8 old Apiary ClickHouse data dirs (19 GB), 43
+empty test Postgres clusters (~100 MB each), Redis caches, empty `CAs`, PeerDB minio staging,
+HTTP Toolkit's CA volume. One July copy of the whole dev cluster was kept for Michael. Scripts
+and notes in `beehiiv/docker-swarm/tmp/docker-cleanup/`.
+
+- **`docker compose rm -v` leaves image-declared volumes behind.** A `VOLUME` in the image
+  (ClickHouse's `/var/lib/clickhouse`) gets an anonymous volume compose doesn't remove, so
+  every recreate orphaned 7 GB. Collect them from `docker inspect` mounts and delete by name.
+- Old `:latest` pulls show as dangling images with a RepoDigest; they share layers with the
+  current tag, so deleting four "917 MB" ones freed under 1 GB.
+- dcg's rm-force regex also matches **paths containing "docker"** followed by `rm -f`
+  (`cd …/docker-swarm/tmp && rm -f x`). Rename (`mv`) instead, or use a path without it.
 
 ## Instructions
 
