@@ -1,13 +1,14 @@
 ---
 name: running-review-sessions
-description: "MUST be used when Michael wants to work through the PRs waiting on his review: a review session, clearing the review queue, or reviewing several PRs in a row. Runs check-review-queue (crq), takes a cursory look at each PR (size, stack, ticket, overlap with our own work), proposes a review order, writes tmp/reviews/QUEUE.md, and chains one fresh session per PR with anima session handoff so Michael can talk through every review. Also MUST be loaded by a session started from a review-queue handoff, to take the next PR, record the decision, and hand off to the one after. Covers queue order rules (follow-ups and re-requests first, stacks bottom-up, our project's PRs before others), quieting follow-ups that need nothing, and when the chain stops. Triggers on: review session, start a review session, review queue, check review queue, crq, clear my reviews, PRs waiting on me, work through my reviews, review these PRs one by one, review chain, next review, continue the review queue, which PR should we review first, review order, triage reviews, quiet this PR."
+description: "MUST be used when Michael wants to work through the PRs waiting on his review: a review session, clearing the review queue, or reviewing several PRs in a row. Runs check-review-queue (crq), takes a cursory look at each PR (size, stack, ticket, overlap with our own work), picks the review order itself, writes tmp/reviews/QUEUE.md, and chains one fresh session per PR with anima session handoff, posting each review without waiting on Michael unless there is a question for him. Also MUST be loaded by a session started from a review-queue handoff, to take the next PR, record the decision, and hand off to the one after. Covers queue order rules (follow-ups and re-requests first, stacks bottom-up, our project's PRs before others), quieting follow-ups that need nothing, and when the chain stops. Triggers on: review session, start a review session, review queue, check review queue, crq, clear my reviews, PRs waiting on me, work through my reviews, review these PRs one by one, review chain, next review, continue the review queue, which PR should we review first, review order, triage reviews, quiet this PR."
 ---
 
 # Running Review Sessions
 
-Michael gets several review requests at once, and each review is a conversation: I dig in, show him findings
-and a recommended verdict, and post only after he decides. One session can't hold six of those, and subagents
-are wrong for it because he can only talk to me, not to them. So a review session is a **chain**: a queue file
+Michael gets several review requests at once. Reviews unblock teammates, so the goal is to get them out fast:
+I dig in, decide the verdict, post, and move on, and I bring Michael in only when a review raises a question for
+him. One session can't hold six full reviews, and subagents are wrong for it because he can only talk to me, not
+to them. So a review session is a **chain**: a queue file
 that holds the order and the outcomes, and one fresh session per PR, each handing off to the next.
 
 ## When to Use
@@ -53,9 +54,11 @@ our own in-flight work (our plan files and NOTES.md say what that is). For a fol
 our review: `git log --oneline <our-reviewed-sha>..origin/<branch>`. If it's only a merge from main or
 nothing that needs a reply, recommend quieting it instead of queueing it.
 
-### 4. Propose the order
+### 4. Pick the order and go
 
-These come first:
+**Standing rule (Michael, 2026-11-12): "as soon as I ask for a review queue, just go ahead and do them in
+whatever order that you deem fit."** Don't propose the order and wait. Show him the table as information and
+start. These come first:
 
 1. **Follow-ups and re-requests.** Michael's rule: "always focus on follow ups first since we've already
    reviewed them." The delta is small and the author is waiting on us specifically.
@@ -64,9 +67,9 @@ These come first:
    own next step.
 4. **Then everything else**, smaller first unless one is blocking someone.
 
-Show Michael a table (PR, author, size, why it's in that spot) and ask about **tail work**: something that
-should run after the last review, like a ticket the reviews unblock. Wait for his OK. He may reorder, drop or
-quiet items.
+Show Michael the table (PR, author, size, why it's in that spot) and start. He can still reorder, drop or quiet
+items whenever he likes. Add **tail work** (something that should run after the last review, like a ticket the
+reviews unblock) only when he names it.
 
 ### 5. Write the queue, then start the chain
 
@@ -87,7 +90,12 @@ the old one to `tmp/reviews/archive/QUEUE-<date>.md` first.
      draft) becomes `skipped` with the reason. Tell Michael.
 3. **Mark the row `reviewing`**, then review it with `reviewing-prs-with-claudia`, the full process: worktree,
    mutation checks, findings plus a recommended verdict. Working files go in `tmp/reviews/<N>/`.
-4. **Wait for Michael's decision**, then post, verify, and remove the worktree, per that skill.
+4. **Decide and post** without waiting for Michael: post my verdict, verify it registered, and remove the worktree,
+   per that skill. APPROVE a clean PR or one with only nits; COMMENT when there are real concerns or the PR's own
+   body says to hold the merge. **Hold and ask him** only when there's a question for him: a REQUEST_CHANGES-level
+   blocker (that verdict is his call, never be the blocker by default), a product or relationship judgment, or
+   something touching our own in-flight work in a way he should weigh. Then send a PushNotification with the
+   question, mark the row `held: <question>`, and carry on with the next PR. Come back to it when he answers.
 5. **Record the outcome** on the row: the verdict and one line on what we said. Anything the **next** PR needs
    goes under its notes: "base #33584 renames X, check #33590 uses the new name", or "Phil said he'll fix Y
    in the next PR up".
@@ -132,7 +140,7 @@ one nit on the copy.
 Stacked on #33584. Carried forward: ...
 ```
 
-Statuses: `pending`, `reviewing`, `posted: APPROVE | COMMENT | REQUEST_CHANGES`, `skipped: <reason>`, `quieted`.
+Statuses: `pending`, `reviewing`, `posted: APPROVE | COMMENT | REQUEST_CHANGES`, `held: <question>`, `skipped: <reason>`, `quieted`.
 
 ## Quieting a follow-up
 
@@ -150,5 +158,6 @@ comes back on any later update, including a bot comment, so it's a snooze, not a
   give Michael the next title and prompt to start by hand.
 - **The main checkout isn't part of this.** Reviews run in worktrees. Don't report or touch the shared
   checkout's branch, even if this session started on one.
-- **Posting is always Michael's call.** The chain never posts a review he hasn't decided on, even when the
-  verdict looks obvious.
+- **Posting is mine unless there's a question.** Since 2026-11-12 the chain posts its own verdicts. Every review
+  still gets the full process (run the code, mutation-test the claims, check the invariants), never a skim:
+  Michael depends on that depth because he can't judge Rails quality himself.
