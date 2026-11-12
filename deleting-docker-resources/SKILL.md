@@ -128,6 +128,13 @@ and notes in `beehiiv/docker-swarm/tmp/docker-cleanup/`.
 - **`docker compose rm -v` leaves image-declared volumes behind.** A `VOLUME` in the image
   (ClickHouse's `/var/lib/clickhouse`) gets an anonymous volume compose doesn't remove, so
   every recreate orphaned 7 GB. Collect them from `docker inspect` mounts and delete by name.
+- **Where the empty pg17 clusters come from:** swarm's `rake annotate_rb` /
+  `ci:check_annotated` (`lib/tasks/helpers/annotation_database.rb`) removes its
+  `swarm_annotations_pg` container with `docker rm -f` and no `-v`: ~127 MB per run, `application`
+  role only (`swarm_test` often missing from `global/1262` because it was never checkpointed).
+  BEE-28709. Until that ships, they come back with every annotation run and are safe to delete.
+- For unused **pulled** images, grep compose files, Dockerfiles and scripts for each ref first;
+  keep anything still named (base images, CI images), delete superseded version tags.
 - Old `:latest` pulls show as dangling images with a RepoDigest; they share layers with the
   current tag, so deleting four "917 MB" ones freed under 1 GB.
 - dcg's rm-force regex also matches **paths containing "docker"** followed by `rm -f`
