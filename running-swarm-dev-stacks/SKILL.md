@@ -1,6 +1,6 @@
 ---
 name: running-swarm-dev-stacks
-description: "MUST be used when starting, stopping, restarting or checking beehiiv's local dev stack (swarm API, client, orchid, Sidekiq workers), in the main checkout or a worktree, and when reading a service's output. Covers the `swarm` CLI from Michael's swarm-tools repo: one tmux session per instance (swarm-dev-N, ports 3000+N*100, app-N.localhiiv.com), api + client by default, orchid and workers on demand, `swarm logs` instead of pane numbers, `swarm status` memory, the workers guard (one shared Redis queue), why REDIS_URL must never be split per instance (Flipper flags live there), and stale-worktree symptoms. Triggers on: swarm start, swarm stop, swarm restart, swarm kill, swarm status, swarm logs, swarm api, start the dev server, start swarm, run the app locally, local dev stack, dev instance, instance number, worktree instance, app-1.localhiiv.com, swarm-dev, tmux pane, API pane, client pane, start workers, sidekiq locally, jobs not running, start orchid, orchid locally, test an orchid PR, review an orchid change, publication site locally, localhiiv.com refused to connect, PendingMigrationError, port 3000 in use, server.pid, parallel agents, parallel worktrees, dev stack memory."
+description: "MUST be used when starting, stopping, restarting or checking beehiiv's local dev stack (swarm API, client, orchid, Sidekiq workers), in the main checkout or a worktree, and when reading a service's output. Covers the `swarm` CLI from Michael's swarm-tools repo: one tmux session per instance (swarm-dev-N, ports 3000+N*100, app-N.localhiiv.com), api + client by default, orchid and workers on demand, `swarm logs` instead of pane numbers, `swarm status` memory, the workers guard (one shared Redis queue), why REDIS_URL must never be split per instance (Flipper flags live there), and stale-worktree symptoms. Triggers on: swarm start, swarm stop, swarm restart, swarm kill, swarm status, swarm logs, swarm api, start the dev server, start swarm, run the app locally, local dev stack, dev instance, instance number, worktree instance, app-1.localhiiv.com, swarm-dev, tmux pane, API pane, client pane, start workers, sidekiq locally, jobs not running, start orchid, orchid locally, test an orchid PR, review an orchid change, publication site locally, localhiiv.com refused to connect, PendingMigrationError, port 3000 in use, server.pid, parallel agents, parallel worktrees, dev stack memory, reset apiary, apiary tear down, clickhouse reset, peerdb setup, setup_apiary, clickhouse system tables, trace_log, replication slot, ghcr denied, floci uploads lost."
 ---
 
 # Running swarm dev stacks
@@ -129,6 +129,36 @@ a restart is ~30 s (Docker cycling the container plus an 11 s entrypoint ownersh
   real uploads (BEE-28529). A huge object count in the dev bucket is that, not real data.
 - A dump/restore isn't the shortcut it looks like: it needs Postgres running on the old storage
   first, and it drops the PeerDB replication slots.
+
+## Resetting Apiary (ClickHouse + PeerDB) without losing uploads
+
+**Never run swarm's `rake peerdb:apiary_tear_down`.** It is `docker compose down -v` on swarm's
+whole compose project (`docker`), which deletes `docker_floci_data` (every local upload) too. Use
+docker-swarm's `scripts/reset-apiary` (beehiiv/docker-swarm#3): it removes only ClickHouse, PeerDB
+and Temporal and their volumes (`clickhouse-data`, `clickhouse-logs`, PeerDB catalog `pgdata`,
+clickhouse-test's anonymous volume), keeps Floci and minio, stops on any volume it hasn't
+classified, then runs `peerdb:setup_apiary` and swarm's `scripts/update_apiary` (the migration
+wait). Michael runs it in his terminal: it prompts, and AWS SSO may open the browser.
+
+- **Replication slots are handled by the image**: its `validate-postgres.sh` drops an inactive
+  `peerflow_slot_<mirror>` whose mirror no longer exists, right before recreating the mirror (logs
+  say `Dropped orphaned replication slot`). The new slots show `active: false` until the initial
+  snapshot ends (a few minutes), then go active.
+- **Bundler on the wrong Ruby**: a shell with `mise activate` keeps the Ruby it resolved in the
+  caller's directory, so a script that `cd`s into swarm runs Ruby 4.x against a 3.4 Gemfile and
+  dies after the teardown. Run swarm Ruby from scripts through `mise exec --`.
+- **`denied: denied` pulling public `ghcr.io/peerdb-io/*`** = a stale ghcr.io login in the
+  keychain (Michael's was username `USERNAME` with a dead `ghp_` token, GitHub API 401). Docker
+  sends it and never falls back to anonymous; an empty `DOCKER_CONFIG` doesn't help, because the
+  CLI auto-detects osxkeychain. Prove it with curl and an anonymous token
+  (`https://ghcr.io/token?scope=repository:<repo>:pull`), then `docker logout ghcr.io`.
+- **Measuring ClickHouse self-logging**: per-table size from `system.parts` (`database='system'
+  AND active`; without `active` you count merged-away parts still on disk and see a fake spike),
+  rows per window from each `*_log`'s `event_time`, and exact container disk rates from
+  `/sys/fs/cgroup/io.stat` inside the container sampled 60 s apart (`docker stats` BlockIO is
+  whole GB). Before Agus's 2026-11-12 image: 6.5 GiB of system tables per container in 22 h,
+  ~33,500 rows/min idle, ~15 % CPU. After: ~1.2 MiB, a few hundred rows/min, ~6 %. Notes in
+  `docker-swarm/tmp/apiary-reset/NOTES.md`.
 
 ## Don't
 
