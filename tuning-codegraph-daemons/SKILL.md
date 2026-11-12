@@ -81,6 +81,17 @@ takes minutes and writes the whole index. Instead, clone one:
 - Seed from an index of **origin/main**, not the main checkout: ours was 305 commits behind (only
   as current as its last `git pull`), and the first seed re-indexed 1,960 files (2 min, 459 MB
   diverged). From a current seed: 8.8 s, "Already up to date".
+- **A clone's real cost grows with how far it is from the seed, and fast.** SQLite b-tree inserts
+  scatter across the file, so a small share of changed files rewrites a large share of pages. On
+  2026-11-12, a worktree from origin/main with a 13 h old seed (84 commits, 1,102 files, 3% of the repo)
+  synced in 19 s but diverged **~475 MB (31% of the pages)**. 1,960 files gave 459 MB, so it levels
+  off near a third of the db. So: ~0 right after the 03:45 refresh, ~0.5 GB by late afternoon, plus
+  the ~470 MB checkout. Still far below a 1.5 GB copy.
+- **Measure divergence with `scripts/pagediff.py <seed.db> <clone.db>`** (run with `python3 -I`),
+  not `df`. `df` around a seed is swamped by background writes (~60 MB/min on a busy afternoon) and
+  by the sync's temporary WAL, which Time Machine's hourly local snapshots keep after deletion. A
+  `df` delta read 1.1 GB where the page diff said 475 MB. The page diff is a lower bound (a page
+  rewritten with identical bytes still diverged), but a close one.
 - An index that appears after a session started is picked up on the next tool call (the engine
   re-resolves its project per call), so seeding in the background at session start works.
 
