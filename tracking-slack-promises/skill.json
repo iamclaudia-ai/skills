@@ -5,9 +5,24 @@
     "scan": {
       "script": "scripts/scan.py",
       "longRunning": false,
-      "description": "scan [--days 30] | import TRIAGE.json | record KEY STATUS [--ticket ID] [--note TEXT] | ledger [--status open]",
+      "description": "scan [--days 30 | --since-last] | import TRIAGE.json | record KEY STATUS [--ticket ID] [--note TEXT] [--title TEXT] [--asker NAME] | ledger [--status open]",
       "env": ["SLACK_USER_TOKEN"],
       "timeoutMs": 900000
+    },
+    "morning": {
+      "script": "scripts/morning.ts",
+      "runtime": "bun",
+      "longRunning": false,
+      "description": "Start the morning sweep session in swarm (scan, triage, reconcile /today ticks, top picks, note), wait for it, and fail unless today's scan and note landed.",
+      "args": [
+        {
+          "name": "flags",
+          "type": "string",
+          "required": false,
+          "description": "[--dry-run] [--no-wait]"
+        }
+      ],
+      "timeoutMs": 7500000
     }
   }
 }

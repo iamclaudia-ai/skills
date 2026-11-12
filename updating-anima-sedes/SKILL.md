@@ -52,7 +52,10 @@ same code and as close to the same config as vesuvius. This skill keeps it there
 - **Intended differences.** Sedes runs `imessage` and `claudeRuntime: "sdk"` (she works
   unattended; the CLI runtime's tmux panes are for interactive work). Vesuvius runs `mail`,
   `webhooks`, `support` and `editor` until those move: running mail or webhooks on both would
-  process everything twice, and the Cloudflare tunnel points at vesuvius.
+  process everything twice, and the Cloudflare tunnel points at vesuvius. Vesuvius also runs
+  `today` (Michael's `/today` dashboard) and its 4:30 AM morning sweep: they need his beehiiv
+  credentials (Slack token, `lin`, `gh`), which stay off Sedes, so `extensions.today.*` shows as
+  vesuvius-only in config-diff.
 - **Never from the scheduler (yet).** The restart kills the scheduler running the script, so it
   refuses when `ANIMA_TASK_ID` is set (except `--check`). Automating updates needs the restart
   phase detached first.

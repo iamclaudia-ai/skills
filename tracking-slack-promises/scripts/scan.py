@@ -6,14 +6,14 @@
 """Find Slack threads where Michael promised something or was asked for something.
 
 Walks every conversation the token's user belongs to (channels, private channels,
-DMs, group DMs), because the user token has history scopes but no search:read.
+DMs, group DMs), then searches for his messages and mentions the walk can't see.
 Keeps a thread when it holds a commitment by Michael ("I'll take a look") or a
 request aimed at him (a mention or a DM asking "can you..."). Threads already
 decided in the ledger are skipped unless they got new replies since.
 
 Usage:
-  scan.py scan [--days 30] [--dir DIR] [--exclude NAME ...]
-  scan.py record KEY STATUS [--ticket ID] [--note TEXT] [--dir DIR]
+  scan.py scan [--days 30 | --since-last] [--dir DIR] [--exclude NAME ...]
+  scan.py record KEY STATUS [--ticket ID] [--note TEXT] [--title TEXT] [--asker NAME] [--dir DIR]
   scan.py import TRIAGE.json [--dir DIR]
   scan.py ledger [--status open] [--dir DIR]
 
@@ -28,7 +28,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -149,7 +149,9 @@ def scan(args):
     identity = web.auth_test()
     me, base_url = identity["user_id"], identity["url"].rstrip("/")
     names, ledger = Names(web), load_ledger(directory)
-    oldest = time.time() - args.days * 86400
+    started = datetime.now()
+    oldest, window = scan_window(args, ledger, started)
+    print(f"scanning {window}", file=sys.stderr)
     excluded = {name.lstrip("#") for name in args.exclude}
 
     conversations = list(
@@ -239,7 +241,8 @@ def scan(args):
     # History only returns thread parents in the window, so the walk misses Michael's replies in threads that
     # started earlier and mentions of him in threads he never joined. Search finds both (needs search:read).
     by_id = {conversation["id"]: conversation for conversation in conversations}
-    after = datetime.fromtimestamp(oldest).strftime("%Y-%m-%d")
+    # Search dates are whole days and `after:` is exclusive, so start from the day before the window opens.
+    after = (datetime.fromtimestamp(oldest) - timedelta(days=1)).strftime("%Y-%m-%d")
     searches = ((f"from:<@{me}> after:{after}", PROMISE, True), (f"<@{me}> after:{after}", REQUEST, False))
     try:
         for query, pattern, mine in searches:
@@ -270,14 +273,33 @@ def scan(args):
     run_stamp = datetime.now().strftime("%Y-%m-%d-%H%M")
     (directory / f"scan-{run_stamp}.json").write_text(json.dumps(results, indent=2) + "\n")
     report = directory / f"scan-{run_stamp}.md"
-    report.write_text(render(results, args.days, skipped_known))
-    ledger["last_scan"] = datetime.now().isoformat(timespec="seconds")
+    report.write_text(render(results, window, skipped_known))
+    # The start, not the end: a message posted while the scan ran is newer than this, so the next run sees it.
+    ledger["last_scan"] = started.isoformat(timespec="seconds")
     save_ledger(directory, ledger)
     print(f"{len(results)} candidate threads ({skipped_known} already decided and quiet) -> {report}")
 
 
-def render(results, days, skipped_known):
-    lines = [f"# Slack promise scan: last {days} days", "",
+SINCE_LAST_OVERLAP = 3600
+
+
+def scan_window(args, ledger, started):
+    """The scan's `oldest` timestamp and a label for the report.
+
+    --since-last starts an hour before the ledger's previous scan, so a thread that was mid-conversation
+    then still comes back. With no previous scan it falls back to --days.
+    """
+    last = ledger.get("last_scan")
+    if args.since_last and last:
+        oldest = datetime.fromisoformat(last).timestamp() - SINCE_LAST_OVERLAP
+        return oldest, f"since {stamp(oldest)} (last scan {last}, minus an hour)"
+    if args.since_last:
+        print(f"no last_scan in the ledger; scanning the last {args.days} days", file=sys.stderr)
+    return started.timestamp() - args.days * 86400, f"last {args.days} days"
+
+
+def render(results, window, skipped_known):
+    lines = [f"# Slack promise scan: {window}", "",
              f"{len(results)} candidates, {skipped_known} already-decided threads skipped.", ""]
     for number, candidate in enumerate(results, 1):
         flags = ", ".join(candidate["kinds"])
@@ -316,10 +338,9 @@ def record(args):
     # replies after this moment reopen the thread.
     entry.update(status=args.status, last_seen_ts=str(time.time()),
                  decided_at=datetime.now().isoformat(timespec="seconds"))
-    if args.ticket:
-        entry["ticket"] = args.ticket
-    if args.note:
-        entry["note"] = args.note
+    for field in ("ticket", "note", "title", "asker"):
+        if getattr(args, field):
+            entry[field] = getattr(args, field)
     ledger["threads"][args.key] = entry
     save_ledger(directory, ledger)
     print(f"{args.key} -> {args.status} {args.ticket or ''}")
@@ -340,8 +361,10 @@ def import_triage(args):
         ticket = item.get("existing_ticket")
         status = VERDICT_STATUS.get(item["verdict"]) or ("ticketed" if ticket else "open")
         scanned = scanned_by_key.get(item["key"], {})
+        # The dashboard shows `title` and names `asker` as who's waiting.
         ledger["threads"][item["key"]] = {
-            "status": status, "ticket": ticket, "note": item.get("title"),
+            "status": status, "ticket": ticket, "title": item.get("title"), "asker": item.get("asker"),
+            "note": item.get("note"),
             "where": item.get("where") or scanned.get("where"),
             "permalink": item.get("permalink") or scanned.get("permalink"),
             "last_seen_ts": scanned.get("last_seen_ts", "0"),
@@ -358,7 +381,8 @@ def show_ledger(args):
         if args.status and entry["status"] != args.status:
             continue
         print(f"{entry['status']:<9} {entry.get('ticket') or '':<10} {(entry.get('where') or key)[:40]:<40} "
-              f"{(entry.get('note') or '')[:70]}  {entry.get('permalink') or ''}")
+              f"{(entry.get('title') or entry.get('note') or '')[:70]}  {entry.get('asker') or ''}  "
+              f"{entry.get('permalink') or ''}")
 
 
 def main():
@@ -366,6 +390,8 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     scan_parser = sub.add_parser("scan")
     scan_parser.add_argument("--days", type=int, default=30)
+    scan_parser.add_argument("--since-last", action="store_true",
+                             help="start an hour before the ledger's last scan (the nightly sweep)")
     scan_parser.add_argument("--exclude", nargs="*", default=[], help="channel names to skip")
     scan_parser.add_argument("--max-messages", type=int, default=20)
     scan_parser.add_argument("--max-chars", type=int, default=700)
@@ -374,6 +400,8 @@ def main():
     record_parser.add_argument("status")
     record_parser.add_argument("--ticket")
     record_parser.add_argument("--note")
+    record_parser.add_argument("--title", help="short title the dashboard shows")
+    record_parser.add_argument("--asker", help="who's waiting (a real name, not a handle)")
     import_parser = sub.add_parser("import")
     import_parser.add_argument("triage", help="JSON array of {key, verdict, existing_ticket, title, ...}")
     ledger_parser = sub.add_parser("ledger")
