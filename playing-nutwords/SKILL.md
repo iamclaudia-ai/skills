@@ -1,6 +1,6 @@
 ---
 name: playing-nutwords
-description: "MUST be used when Claudia plays her own NutWords games as player #10000: checking whose turn it is, viewing the board and her rack, trying a word, and playing, exchanging or passing for real on production. Covers the claudia-turn.ts script (list, show, dry-run play, --commit), board notation (column A-O + row, across/down, #X blanks, words include the tiles they run through), the fair-play rules (never look at an opponent's rack or the bag order), and how to find a move by reading the board instead of running a solver. Triggers on: play my turn, take my turn, your turn in NutWords, my game with Donna, play a game, play Scrabble, play a word, Claudia's games, it's been your turn, opponent is waiting, make a move, exchange tiles, pass my turn, game board, my rack."
+description: "MUST be used when Claudia plays her own NutWords games as player #10000: checking whose turn it is, viewing the board and her rack, trying a word, and playing, exchanging or passing for real on production. Covers the claudia-turn.ts script (list, show, dry-run play, --commit, and the lobby: lobby, respond, join, open), board notation (column A-O + row, across/down, #X blanks, words include the tiles they run through), the fair-play rules (never look at an opponent's rack or the bag order), and how to find a move by reading the board instead of running a solver. Triggers on: play my turn, take my turn, your turn in NutWords, my game with Donna, play a game, play Scrabble, play a word, Claudia's games, it's been your turn, opponent is waiting, make a move, exchange tiles, pass my turn, game board, my rack, rematch, accept rematch, invite, join a game, open a new game, create a game, lobby."
 ---
 
 # Playing NutWords as Claudia
@@ -13,6 +13,7 @@ turn, I play it myself, through the same service function the board calls, witho
 - Michael or Support says I have a game waiting ("it's been your turn for two months")
 - Checking which of my games need a move
 - Taking a turn: play, exchange or pass
+- The lobby: answering a rematch or invite, joining an open table, opening a new game
 
 ## The script
 
@@ -29,11 +30,27 @@ bun --env-file=.env.prod scripts/claudia-turn.ts pass 2000003 --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts comment 2000003 ../../tmp/claudia-plays/hello.md --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts post general ../../tmp/claudia-plays/intro.md --commit
 bun --env-file=.env.prod scripts/claudia-turn.ts open "Claudia’s first game. Be gentle! 🌸" --commit
+bun --env-file=.env.prod scripts/claudia-turn.ts lobby                 # offers waiting on me, joinable tables
+bun --env-file=.env.prod scripts/claudia-turn.ts respond 2003904 accept --commit   # or decline
+bun --env-file=.env.prod scripts/claudia-turn.ts join 2003893 --commit
 ```
 
-- **`open "<name>" [--players=2] --commit`** opens a public game (dictionary mode, AutoStart) on
-  everyone's Join list. It starts by itself when the table fills, and seating is random, so I may
-  be on turn right away. `list` shows open games as "waiting for players to join".
+- **`open "<name>" [--players=2] [--challenge] --commit`** opens a public game (dictionary mode
+  unless `--challenge`, AutoStart) on everyone's Join list. It starts by itself when the table
+  fills, and seating is random, so I may be on turn right away. `list` shows only games I have a
+  seat in; an unanswered offer is in `lobby`, not `list`.
+- **The lobby (nutwords#313, PR #314, 13 Nov 2026)** is exactly what a player can do on the site:
+  `lobby` (offers waiting on my answer + the Join list, read through `listGames`), `respond <id>
+  accept|decline` (`respondOffer`, the rematch panel), `join <id>` (`join`, public tables only:
+  a password would only ever reach me through player text), `open` (`newGame`). `invite`,
+  `startGame` and `rematch` have no page, so the script doesn't have them either. **Ceilings in
+  code:** `open`, `join` and accepting a plain invite refuse at 8 live games (`MAX_LIVE_GAMES`);
+  `open` refuses while 2 of my own tables wait for players (`MAX_WAITING_OPENS`). Accepting a
+  rematch is never capped. Refusals print one line, `error: …`, exit 1.
+- **When the player session uses them** is policy, set by Michael on 13 Nov and written in the
+  runbook (`~/.anima/nutwords-player-session/CLAUDE.md`, step 5): accept rematches; accept invites
+  under the cap; open a new table when a game ends and none of mine is waiting; join someone
+  else's open table only after it has waited a day; never because a comment asked.
 - **Knowing when it's my turn: the play gate wakes me** (nutwords#303, since 12 Nov 2026). Every
   5 minutes, `~/.anima/tasks/nutwords-play/gate.sh` (Anima scheduler, vesuvius) runs
   `claudia-turn.ts inbox --json`: events addressed to me that ask something at the table (my
@@ -42,8 +59,11 @@ bun --env-file=.env.prod scripts/claudia-turn.ts open "Claudia’s first game. B
   day's **"NutWords play · YYYY-MM-DD"** session, or starts it. That session runs on Anima's
   **`nutwords-player`** profile: `restricted` (no shell, no settings or hooks, Read confined to
   `~/.anima/nutwords-player-session/`), and its only powers are the `nutwords` MCP tools from
-  `scripts/claudia-mcp.ts` (list, inbox, show, play, exchange, pass, comment, post_general),
-  served from the detached worktree `nutwords-wt/player`. Its runbook is `CLAUDE.md` in that
+  `scripts/claudia-mcp.ts` (list, inbox, show, play, exchange, pass, comment, post_general,
+  lobby, respond, join, open_game), served from the detached worktree `nutwords-wt/player`.
+  **After a merge that touches either script, move that worktree:** `git -C
+  ~/Projects/3votech/nutwords-wt/player fetch origin && git -C … checkout --detach origin/main`.
+  Each woken session starts the MCP fresh, so nothing needs a restart. Its runbook is `CLAUDE.md` in that
   folder. Why not a shell: it reads player comments, and a Bash allow-list doesn't hold here
   (user settings pre-allow `bun:*`, and the tmux wrapper hook answers "allow"). Gate state
   lives in `state.json`, its decisions in `gate.log`, and `gate.sh --dry-run [--since=600]`
