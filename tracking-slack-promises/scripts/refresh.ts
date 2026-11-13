@@ -1,14 +1,19 @@
 #!/usr/bin/env bun
 /**
- * Refresh Michael's /today note and top picks during the day, once he has got through the
- * morning's. A scheduler task runs this every 30 minutes on weekdays, 8am to 6pm. Most runs
- * only read the board and exit; a refresh starts one short session that follows
- * references/day-refresh.md (no Slack scan), then checks a new note landed.
+ * Keep Michael's /today note in step with the live board during the day. The board keeps itself
+ * current: its top 5 is the morning's ranked queue minus whatever got done or started waiting,
+ * topped up from the board's own ranking. So this never re-picks just because picks got done. A
+ * scheduler task runs it every 30 minutes on weekdays, 8am to 6pm; most runs only read
+ * `today board` and exit. When the note has fallen behind, it starts one short session that
+ * follows references/day-refresh.md (no Slack scan), then checks a new note landed.
  *
- * Refresh when (and never within an hour of the last note):
- *   - every one of today's top picks is done, or
- *   - the note is 2+ hours old and at least one pick is done.
- * A pick he nudged today counts as done: its PR waits on reviewers now, not on him.
+ * Never within an hour of the last note. Then:
+ *   - rerank: the queue ran low (fewer than 5 of its items still his to act on, and the board
+ *     is filling picks from its own ranking) and something moved since the note: write a new
+ *     ranked queue and a note.
+ *   - note: the picks the note was written over (`notePicks`) have moved on: 3 or more of them
+ *     (or all, when there were fewer), or any one once the note is 2+ hours old, or new work
+ *     arrived on a board the note called empty. Write a fresh note; leave the queue alone.
  *
  *   refresh.ts [--dry-run] [--force]
  */
@@ -23,48 +28,85 @@ const PROFILE = "sweep"; // the morning sweep's profile; the runbook forbids Sla
 const MAX_WAIT_MS = 30 * 60 * 1000;
 const MIN_GAP_MIN = 60;
 const STALE_MIN = 120;
+const TOP = 5;
 
-export interface Pick {
+/** One line of `today board` (anima's extensions/today/src/board.ts). */
+export interface BoardLine {
   key: string;
   title: string;
-  status: string;
-  /** When he last bumped its reviewers in Slack from the board (`today.nudge`). */
-  nudgedAt?: string | null;
+  lane: string;
+  says: string[];
+  /** Every PR's key when the line is a stack, bottom first. */
+  stack?: string[];
 }
 
-/** Done, dismissed, or a PR he nudged today: either way, nothing left for him today. */
-export function handled(pick: Pick, now: Date): boolean {
-  if (pick.status !== "open") return true;
-  if (!pick.nudgedAt) return false;
-  const midnight = new Date(now);
-  midnight.setHours(0, 0, 0, 0);
-  return Date.parse(pick.nudgedAt) >= midnight.getTime();
-}
-
-export function decide(input: {
-  now: Date;
+export interface Board {
+  date: string;
+  picks: Array<BoardLine & { fromQueue: boolean; reason: string | null }>;
+  waiting: Array<BoardLine & { nudgeDue: boolean }>;
+  asking: Array<{ key: string; title: string; question: string }>;
+  queue: { open: number; moving: number };
   noteUpdatedAt: string | null;
-  picks: Pick[];
-}): { refresh: boolean; reason: string } {
-  const { now, noteUpdatedAt, picks } = input;
+  /** The live picks when the note was written; null for a note older than that record. */
+  notePicks: string[] | null;
+}
+
+export type Mode = "note" | "rerank";
+
+/** The note's picks that aren't in the live top 5 any more (done, waiting, or crowded out). */
+export function movedOn(board: Pick<Board, "picks" | "notePicks">): string[] {
+  const live = new Set(board.picks.flatMap((p) => [p.key, ...(p.stack ?? [])]));
+  return (board.notePicks ?? []).filter((key) => !live.has(key));
+}
+
+export function decide(input: { now: Date; board: Board }): {
+  refresh: boolean;
+  mode?: Mode;
+  reason: string;
+} {
+  const { now, board } = input;
   const day = now.getDay();
   const hour = now.getHours();
   if (day === 0 || day === 6 || hour < 8 || hour >= 18) {
     return { refresh: false, reason: "outside weekday hours (8am-6pm)" };
   }
-  if (!noteUpdatedAt) return { refresh: false, reason: "no note yet today: the morning sweep writes the first" };
-  const ageMin = Math.floor((now.getTime() - Date.parse(noteUpdatedAt)) / 60_000);
+  if (!board.noteUpdatedAt) {
+    return { refresh: false, reason: "no note yet today: the morning sweep writes the first" };
+  }
+  const ageMin = Math.floor((now.getTime() - Date.parse(board.noteUpdatedAt)) / 60_000);
   if (ageMin < MIN_GAP_MIN) return { refresh: false, reason: `note is only ${ageMin} min old` };
-  if (picks.length === 0) return { refresh: false, reason: "no top picks today" };
-  const done = picks.filter((p) => handled(p, now)).length;
-  if (done === picks.length) return { refresh: true, reason: `all ${picks.length} top picks are done` };
-  if (ageMin >= STALE_MIN && done > 0) {
+
+  const noted = board.notePicks ?? [];
+  const moved = movedOn(board).length;
+  const borrowed = board.picks.filter((p) => !p.fromQueue).length;
+  if (board.queue.moving < TOP && borrowed > 0 && moved > 0) {
     return {
       refresh: true,
-      reason: `the note is ${Math.floor(ageMin / 60)}h old and ${done} of ${picks.length} picks are done`,
+      mode: "rerank",
+      reason: `only ${board.queue.moving} of the morning's queue still his to act on, and ${borrowed} of the picks come from the board's own ranking`,
     };
   }
-  return { refresh: false, reason: `${done} of ${picks.length} picks done, note ${ageMin} min old` };
+  if (moved > 0 && moved >= Math.min(3, noted.length)) {
+    return {
+      refresh: true,
+      mode: "note",
+      reason: `${moved} of the ${noted.length} picks the note talks about have moved on`,
+    };
+  }
+  if (moved > 0 && ageMin >= STALE_MIN) {
+    return {
+      refresh: true,
+      mode: "note",
+      reason: `the note is ${Math.floor(ageMin / 60)}h old and ${moved} of its picks have moved on`,
+    };
+  }
+  if (board.notePicks !== null && noted.length === 0 && board.picks.length > 0) {
+    return { refresh: true, mode: "note", reason: "new work arrived since a note with no picks" };
+  }
+  return {
+    refresh: false,
+    reason: `${moved} of ${noted.length} noted picks moved on, note ${ageMin} min old`,
+  };
 }
 
 function anima(args: string[], timeoutMs = 60_000): unknown {
@@ -73,39 +115,64 @@ function anima(args: string[], timeoutMs = 60_000): unknown {
   return JSON.parse(res.stdout.toString());
 }
 
-interface ListResponse {
-  date: string;
-  noteUpdatedAt: string | null;
-  items: (Pick & { topDate: string | null; topRank: number | null })[];
+interface ListItem {
+  key: string;
+  title: string;
+  status: string;
+  completedAt: string | null;
 }
+
+const lineText = (l: BoardLine) => `- ${l.key}: ${l.title}${l.says.length ? ` (${l.says.join("; ")})` : ""}`;
 
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const force = args.includes("--force");
 
-  // `today list` returns only open items unless asked: finished picks would vanish, and "all picks
-  // done" could never be seen (caught on the first end-to-end run).
-  const midnight = new Date();
-  midnight.setHours(0, 0, 0, 0);
-  const board = anima(["today", "list", "--doneSince", midnight.toISOString()]) as ListResponse;
-  const picks = board.items
-    .filter((i) => i.topDate === board.date)
-    .sort((a, b) => (a.topRank ?? 50) - (b.topRank ?? 50));
-  const verdict = decide({ now: new Date(), noteUpdatedAt: board.noteUpdatedAt, picks });
+  const board = anima(["today", "board"]) as Board;
+  const verdict = decide({ now: new Date(), board });
   if (!verdict.refresh && !force) {
     console.log(`no refresh: ${verdict.reason}`);
     process.exit(0);
   }
+  const mode: Mode = verdict.mode ?? "note";
+
+  // `today list` returns only open items unless asked: what he finished would vanish.
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const since = board.noteUpdatedAt ?? midnight.toISOString();
+  const list = anima(["today", "list", "--doneSince", since]) as { items: ListItem[] };
+  const finished = list.items.filter((i) => i.status !== "open" && (i.completedAt ?? "") >= since);
+  const waiting = new Set(board.waiting.flatMap((w) => [w.key, ...(w.stack ?? [])]));
+  const fate = (key: string) => {
+    const item = list.items.find((i) => i.key === key);
+    if (item && item.status !== "open") return item.status;
+    return waiting.has(key) ? "waiting on someone else now" : "crowded out of the top 5";
+  };
+  const live = new Set(board.picks.flatMap((p) => [p.key, ...(p.stack ?? [])]));
 
   const time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const prompt = [
-    "Load the tracking-slack-promises skill and refresh Michael's /today note and top picks exactly as",
-    `${RUNBOOK} describes.`,
+    `Load the tracking-slack-promises skill and refresh Michael's /today ${mode === "rerank" ? "queue and note" : "note"} exactly as`,
+    `${RUNBOOK} describes (mode: ${mode}).`,
     "",
     `Date: ${board.date}, ${time}. Why now: ${force && !verdict.refresh ? "a manual run" : verdict.reason}.`,
-    "Current top picks (the morning's, or the last refresh's):",
-    ...picks.map((p) => `- ${p.key} (${p.status === "open" && handled(p, new Date()) ? "nudged today, waiting on reviewers" : p.status}): ${p.title}`),
+    "",
+    "The picks the current note talks about, and where they went:",
+    ...((board.notePicks ?? []).length
+      ? (board.notePicks ?? []).map((key) => `- ${key}: ${live.has(key) ? "still a pick" : fate(key)}`)
+      : ["- none recorded"]),
+    "",
+    "Finished since the note:",
+    ...(finished.length ? finished.map((i) => `- ${i.key}: ${i.title} (${i.status})`) : ["- nothing yet"]),
+    "",
+    "The live top picks now:",
+    ...(board.picks.length ? board.picks.map(lineText) : ["- none"]),
+    "",
+    "Waiting on others:",
+    ...(board.waiting.length
+      ? board.waiting.map((w) => `${lineText(w)}${w.nudgeDue ? " [nudge due]" : ""}`)
+      : ["- none"]),
     "",
     "You are running unattended. Never ask questions, never post in Slack, never change Linear.",
   ].join("\n");
@@ -120,7 +187,7 @@ if (import.meta.main) {
     "session", "spawn_agent", "--parentSessionId", "NEW", "--cwd", SWARM,
     "--name", `Today refresh · ${board.date} ${time}`, "--profile", PROFILE, "--prompt", prompt,
   ]) as { sessionId: string };
-  console.log(`started today refresh ${sessionId}: ${verdict.reason}`);
+  console.log(`started today refresh (${mode}) ${sessionId}: ${verdict.reason}`);
 
   const turnActive = () =>
     Boolean(
@@ -138,7 +205,7 @@ if (import.meta.main) {
     await Bun.sleep(30_000);
   }
 
-  const after = anima(["today", "list"]) as ListResponse;
+  const after = anima(["today", "board"]) as Board;
   if (!after.noteUpdatedAt || after.noteUpdatedAt < startedAt) {
     console.error(`today refresh ${sessionId}: no new note (last written ${after.noteUpdatedAt})`);
     process.exit(1);

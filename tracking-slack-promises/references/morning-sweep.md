@@ -42,17 +42,20 @@ Follow the skill's Workflow (steps 2-5), with these overnight rules:
 
 ## 3. Reconcile Michael's ticks
 
-He ticks promises off on `/today`; the ledger has to learn that, or the next scan brings them back.
+`/today` has no check circles any more (anima#172: items come and go with their sources), but on a
+category page he can still dismiss a promise as not his (✕), and older ticks may be in the list. The
+ledger has to learn either, or the next scan brings them back.
 
 ```bash
+anima today list --status dismissed --doneBy michael --section promise --doneSince <DONE_SINCE>
 anima today list --status done --doneBy michael --section promise --doneSince <DONE_SINCE>
 ```
 
 For each item whose key starts with `slack:`, the ledger key is the rest (`slack:C123:1794.5` → `C123:1794.5`).
-Skip ones the ledger already has as `done` or `dismissed` (`$S ledger`), then:
+Skip ones the ledger already has as `done` or `dismissed` (`$S ledger`), then record what he did:
 
 ```bash
-$S record <ledgerKey> done --note "ticked on /today"
+$S record <ledgerKey> dismissed --note "dismissed on /today"   # or: done --note "ticked on /today"
 ```
 
 A ticked `linear:` promise stays as it is: his tick hides it on the page, and Linear is his to close.
@@ -125,18 +128,23 @@ anima today list            # open items, today's date and each source's last co
 Check every collection succeeded (`collections` in the refresh result). A failed source makes the page
 incomplete: say so in the final message, and don't build the note on its numbers.
 
-## 7. Top picks (3-5)
+## 7. The ranked queue
 
-Pick what he should do first, in order, with one short reason each (the page shows it under the line):
+`/today` is a live board: it shows the first **5** queued items that are his to act on right now, and
+as each one finishes or starts waiting on someone else, the next one moves up (then the board's own
+ranking fills in). So rank everything worth his time today, most important first, as many as make
+sense (up to 25, usually 10-20), with one short reason each (the page shows it under the line):
 
 - Overdue or due today, and promises someone has been waiting on longest.
 - PR reviews that block a teammate (oldest request first) and his own PRs a session can act on
   (`meta.actionable`: ready to merge, conflicts, failing checks, changes requested, open comments,
-  "your turn"). The state comes from `cpra`, so `stateLabel` is the reason; never pick a PR that only
-  waits on someone else. One exception: a PR awaiting review with no review for 3+ days can be picked
-  as "worth a nudge" (the board's bump button posts it in the review channel), unless he nudged it in
-  the last 3 days (`nudgedAt`). Then it's waiting on reviewers, and `set_top` leaves it out anyway
-  (listed under `quiet` in the result).
+  "your turn"). The state comes from `cpra`, so `stateLabel` is the reason. A PR that only waits on
+  someone else needs no place in the queue: the board lists it under "Waiting on others" by itself,
+  and once it has waited on review for 3 days (since the wait began, or since his last nudge) the
+  board marks it **nudge due** and can lift it into the top 5 on its own. Queue it yourself only to
+  rank a nudge above other work; `set_top` leaves out a PR nudged in the last 3 days (`quiet`).
+- Every CodeRabbit thread is ours to resolve (it's beehiiv's official AI reviewer), so a PR with one
+  is actionable. A thread a person opened that we answered last waits on them, not on us.
 - Tickets and promises he can start (Todo, Backlog, Triage): due soon or urgent/high first. A started
   one (In Progress, In Review) is carried by its PR: pick the PR (`pr:` key), never the ticket.
 
@@ -145,7 +153,10 @@ anima today set_top --picks '[{"key":"linear:BEE-123","reason":"Due today; Jane 
 ```
 
 Keys come from `today list` (`linear:BEE-1`, `review:beehiiv/swarm#N`, `pr:beehiiv/swarm#N`,
-`slack:<channel>:<ts>`). Every reason must be true from what you read.
+`slack:<channel>:<ts>`). Every reason must be true from what you read. A PR stack takes one place on
+the board: queue it once (any of its PRs) and the board says what each PR in it needs. Then look at
+what he'll actually see with `anima today board` (the live top 5 and the Waiting list): the note in
+step 8 is about that board, and `set_note` records its picks, so always set the queue first.
 
 ## 8. The note
 

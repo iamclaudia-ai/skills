@@ -56,15 +56,18 @@ A scheduler task on vesuvius ("Morning sweep", cron `30 4 * * *`, local time) ru
 `sweep` profile (yolo; every Slack write tool except `slack_send_message` disallowed, in
 `agentHost.sessionProfiles`), which follows **`references/morning-sweep.md`**: scan `--since-last`,
 triage, reconcile Michael's ticks from `/today` into the ledger, close the loop on shipped promises,
-unstick tickets with no open PR, `today.set_top`, `today.set_note`. The launcher waits for the turn to end and
+unstick tickets with no open PR, `today.set_top` (a ranked queue of up to 25; the board shows the first
+5 that are his to act on right now), `today.set_note`. The launcher waits for the turn to end and
 exits 1 unless the ledger shows a scan today and `/today` has today's note, so the scheduler's failure
 alert reaches Michael. `--dry-run` prints the prompt; `--no-wait` starts it and returns.
 
 - **The day refresh** (`scripts/refresh.ts`, scheduler task "Today refresh", `*/30 8-17 * * 1-5`):
-  once Michael has finished today's top picks (or the note is 2h+ old and one is done, never within an
-  hour of the last note), it starts a short `Today refresh · <date> <time>` session that follows
-  **`references/day-refresh.md`**: no Slack scan, just the board, the next picks and a fresh note that
-  starts from what he got done. Most runs only read the board and exit. `--dry-run`, `--force`;
+  the board keeps its own picks live (`today board`), so this only keeps the note in step. When the
+  picks the note was written over (`notePicks`) have moved on (3+ of them, or any once the note is 2h
+  old; never within an hour of the last note), it starts a short `Today refresh · <date> <time>`
+  session that follows **`references/day-refresh.md`** and writes a fresh note starting from what he
+  got done. When the queue runs low and the board is borrowing picks from its own ranking, that
+  session re-ranks the queue too. Most runs only read the board and exit. `--dry-run`, `--force`;
   `bun test scripts/refresh.test.ts` covers when it fires.
 - **Closing the loop** (`$S tickets`): when a ticketed promise's Linear ticket is Done, post a short
   update in that promise's thread, signed `Claudia 💙`, then `record <key> replied`. Michael gave
