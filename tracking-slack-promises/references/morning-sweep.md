@@ -158,6 +158,8 @@ before his day starts. The page already says "Good morning, my love 💙" above 
   good (a PR merged, a promise closed). Warm and calm, never alarming. He told us he's drowning;
   the note is the hand on his back.
 - One emoji at most, at the end.
+- Name PRs as `#34486` and tickets as `BEE-28680`: the page turns exactly those into links to
+  GitHub and Linear, so he can open what the note talks about. "The export PR" links nowhere.
 
 ## 9. Finish
 
