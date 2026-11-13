@@ -133,7 +133,10 @@ Pick what he should do first, in order, with one short reason each (the page sho
 - PR reviews that block a teammate (oldest request first) and his own PRs a session can act on
   (`meta.actionable`: ready to merge, conflicts, failing checks, changes requested, open comments,
   "your turn"). The state comes from `cpra`, so `stateLabel` is the reason; never pick a PR that only
-  waits on someone else.
+  waits on someone else. One exception: a PR awaiting review with no review for 3+ days can be picked
+  as "worth a nudge" (the board's bump button posts it in the review channel), unless he nudged it in
+  the last 3 days (`nudgedAt`). Then it's waiting on reviewers, and `set_top` leaves it out anyway
+  (listed under `quiet` in the result).
 - Tickets and promises he can start (Todo, Backlog, Triage): due soon or urgent/high first. A started
   one (In Progress, In Review) is carried by its PR: pick the PR (`pr:` key), never the ticket.
 

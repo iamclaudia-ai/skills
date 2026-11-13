@@ -25,6 +25,9 @@ block a teammate, tickets and promises he can start, every reason true from what
 
 - Never re-pick something he finished today, and keep an unfinished morning pick only if it still
   belongs near the top (say why: "Still the one to guard: due tomorrow").
+- A pick he nudged (the prompt says "nudged today, waiting on reviewers") is handled: he bumped the
+  reviewers and can only wait now. Don't re-pick it; `set_top` drops a PR nudged in the last 3 days
+  and lists it under `quiet`. Count the nudge as progress in the note.
 - Pinned items stay on the page on their own; don't spend a pick on one.
 - Fewer is fine. If the honest list is two things, pick two.
 

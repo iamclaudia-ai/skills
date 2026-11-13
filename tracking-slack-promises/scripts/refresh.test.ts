@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { decide, type Pick } from "./refresh";
+import { decide, handled, type Pick } from "./refresh";
 
 // Thursday Nov 12, 2026, local time.
 const at = (hhmm: string) => new Date(`2026-11-12T${hhmm}:00`);
@@ -47,5 +47,22 @@ describe("decide", () => {
     const now = at("11:00");
     expect(decide({ now, noteUpdatedAt: null, picks: picks("done") }).refresh).toBe(false);
     expect(decide({ now, noteUpdatedAt: ago(now, 300), picks: [] }).refresh).toBe(false);
+  });
+});
+
+describe("handled", () => {
+  test("a pick he nudged today is off his plate; yesterday's nudge isn't today's", () => {
+    const now = at("15:00");
+    const pick = { key: "pr:beehiiv/swarm#34317", title: "OmniAuth", status: "open" };
+    expect(handled({ ...pick, nudgedAt: at("14:30").toISOString() }, now)).toBe(true);
+    expect(handled({ ...pick, nudgedAt: new Date("2026-11-11T15:00:00").toISOString() }, now)).toBe(false);
+    expect(handled({ ...pick, nudgedAt: null }, now)).toBe(false);
+    expect(handled({ ...pick, status: "done" }, now)).toBe(true);
+  });
+
+  test("a nudged pick counts toward refreshing", () => {
+    const now = at("14:00");
+    const nudged = { key: "pr:1", title: "PR", status: "open", nudgedAt: at("13:00").toISOString() };
+    expect(decide({ now, noteUpdatedAt: ago(now, 150), picks: [nudged, ...picks("open")] }).refresh).toBe(true);
   });
 });

@@ -8,6 +8,7 @@
  * Refresh when (and never within an hour of the last note):
  *   - every one of today's top picks is done, or
  *   - the note is 2+ hours old and at least one pick is done.
+ * A pick he nudged today counts as done: its PR waits on reviewers now, not on him.
  *
  *   refresh.ts [--dry-run] [--force]
  */
@@ -27,6 +28,17 @@ export interface Pick {
   key: string;
   title: string;
   status: string;
+  /** When he last bumped its reviewers in Slack from the board (`today.nudge`). */
+  nudgedAt?: string | null;
+}
+
+/** Done, dismissed, or a PR he nudged today: either way, nothing left for him today. */
+export function handled(pick: Pick, now: Date): boolean {
+  if (pick.status !== "open") return true;
+  if (!pick.nudgedAt) return false;
+  const midnight = new Date(now);
+  midnight.setHours(0, 0, 0, 0);
+  return Date.parse(pick.nudgedAt) >= midnight.getTime();
 }
 
 export function decide(input: {
@@ -44,7 +56,7 @@ export function decide(input: {
   const ageMin = Math.floor((now.getTime() - Date.parse(noteUpdatedAt)) / 60_000);
   if (ageMin < MIN_GAP_MIN) return { refresh: false, reason: `note is only ${ageMin} min old` };
   if (picks.length === 0) return { refresh: false, reason: "no top picks today" };
-  const done = picks.filter((p) => p.status !== "open").length;
+  const done = picks.filter((p) => handled(p, now)).length;
   if (done === picks.length) return { refresh: true, reason: `all ${picks.length} top picks are done` };
   if (ageMin >= STALE_MIN && done > 0) {
     return {
@@ -93,7 +105,7 @@ if (import.meta.main) {
     "",
     `Date: ${board.date}, ${time}. Why now: ${force && !verdict.refresh ? "a manual run" : verdict.reason}.`,
     "Current top picks (the morning's, or the last refresh's):",
-    ...picks.map((p) => `- ${p.key} (${p.status}): ${p.title}`),
+    ...picks.map((p) => `- ${p.key} (${p.status === "open" && handled(p, new Date()) ? "nudged today, waiting on reviewers" : p.status}): ${p.title}`),
     "",
     "You are running unattended. Never ask questions, never post in Slack, never change Linear.",
   ].join("\n");
