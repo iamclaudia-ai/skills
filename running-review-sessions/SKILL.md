@@ -216,6 +216,23 @@ check-review-queue --unquiet 32177
 Use it when a follow-up needs nothing from us, like a merge from main or replies that don't ask anything. It
 comes back on any later update, including a bot comment, so it's a snooze, not a dismissal.
 
+## GitHub's GraphQL budget
+
+Everything running `gh` as Michael (his terminal, every session, Anima's /today board) shares **5,000
+GraphQL points an hour**. `gh api graphql` and `gh pr view --json` draw from it; REST (`gh api repos/...`)
+has its own 5,000. When it runs out, crq, cpra and every `gh pr view` fail with `API rate limit exceeded`
+until the reset (2026-11-13: the board alone used it up).
+
+- **Check it (free):** `gh api rate_limit --jq .resources.graphql` gives `used`, `remaining`, `reset` (epoch).
+- **Price a query without spending:** add `rateLimit(dryRun: true) { cost }` to it.
+- **Cost follows the page sizes you ask for, not what comes back.** `search(first: 50)` with
+  `reviewThreads(first: 100) { comments(first: 1) comments(last: 1) }` per PR is charged as 50 × 100 × 2
+  requests (102 points) even for 11 PRs. crq and cpra now ask `issueCount` first (1 point) and fetch exactly
+  that many (dotfiles 85694e9): cpra 102 → ~22, crq 106 → ~11. Do the same in any new query.
+- Measured costs: crq ≈ 13 + 1 per stack author, cpra ≈ 23 + ~1 per PR whose checks it re-reads, a
+  `gh pr view N --json statusCheckRollup` ≈ 1. The board's GitHub pass ≈ 36, at most every 5 minutes, and it
+  pauses itself below 1,000 remaining (`extensions.today.config.githubReserve`).
+
 ## Notes
 
 - **Outside Anima** (no `$ANIMA_SESSION_ID`) there's nothing to hand off from. Write the queue anyway, and
