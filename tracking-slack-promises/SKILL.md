@@ -60,6 +60,12 @@ unstick tickets with no open PR, `today.set_top`, `today.set_note`. The launcher
 exits 1 unless the ledger shows a scan today and `/today` has today's note, so the scheduler's failure
 alert reaches Michael. `--dry-run` prints the prompt; `--no-wait` starts it and returns.
 
+- **The day refresh** (`scripts/refresh.ts`, scheduler task "Today refresh", `*/30 8-17 * * 1-5`):
+  once Michael has finished today's top picks (or the note is 2h+ old and one is done, never within an
+  hour of the last note), it starts a short `Today refresh · <date> <time>` session that follows
+  **`references/day-refresh.md`**: no Slack scan, just the board, the next picks and a fresh note that
+  starts from what he got done. Most runs only read the board and exit. `--dry-run`, `--force`;
+  `bun test scripts/refresh.test.ts` covers when it fires.
 - **Closing the loop** (`$S tickets`): when a ticketed promise's Linear ticket is Done, post a short
   update in that promise's thread, signed `Claudia 💙`, then `record <key> replied`. Michael gave
   standing permission for these done-updates on Nov 12, 2026; nothing else gets posted unasked
