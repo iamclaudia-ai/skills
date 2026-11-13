@@ -74,3 +74,24 @@ spikes in anima #84 answered every hook question in one afternoon with this kit.
 | Notification hook | `notification_type: "permission_prompt"`, ~6s after the request |
 
 Re-measure after CLI updates that touch permissions; update this table with the version.
+
+## Measured: workspace trust, Claude Code 2.1.323 (2026-11-13)
+
+How the "Is this a project you trust?" dialog decides, measured with a throwaway repo under
+`~/Projects` launched in a tmux pane (`claude --dangerously-skip-permissions`), then read in the
+binary (`pL`, `bS`, `SS` near `hasTrustDialogAccepted`).
+
+| Question | Answer |
+|---|---|
+| Shows under `--dangerously-skip-permissions`? | Yes. Every profile needs its folder trusted |
+| Key it reads | `projects[<realpath of cwd>].hasTrustDialogAccepted === true` in `~/.claude.json` |
+| Minimal entry | `{ "hasTrustDialogAccepted": true }` alone is enough |
+| Parent folders | Walks up from cwd, but **never past the git root**: a trusted `~/Projects` covers no repo inside it |
+| Subfolder of a trusted repo | Trusted (the walk reaches the repo root) |
+| Worktree of a trusted repo | Trusted (the main repo's entry counts) |
+| Home folder | Trust is session-only, never read from the file |
+
+Anima pre-trusts every CLI session's cwd before launch:
+`packages/agent-host/src/providers/cli/workspace-trust.ts`. To probe a binary string without grep
+choking on minified lines, read the binary in bun (`TextDecoder("latin1")`, `indexOf`, slice
+around the hit); dcg blocks `perl` in a pipeline.
