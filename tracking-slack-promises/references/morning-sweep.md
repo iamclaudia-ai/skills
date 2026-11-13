@@ -69,7 +69,7 @@ For each ticket in state type **`completed`**:
 
 1. **Check it really shipped.** Read the ticket and its PRs (`gh pr view <url> --json state,mergedAt`).
    Merged is "merged". Say "live" only if you checked that it's deployed. If you can't tell what
-   shipped, draft instead (step 8) and leave the ledger alone.
+   shipped, draft instead (step 9) and leave the ledger alone.
 2. **Read each thread's tail** (`slack_read_thread`; for a DM, `slack_read_channel`). If Michael or
    someone already said it's done, don't post: `$S record <key> done --note "already closed out in thread"`.
 3. **Post the update in the thread** with `slack_send_message`: the thread's channel, and `thread_ts` =
@@ -91,7 +91,31 @@ Rules:
 Then look for **stalled** promises: ticketed ones past their `dueDate`, or in Todo for 14 days or more
 (`createdAt`). Don't post. Use them in the top picks and the note ("Lewaa has waited two weeks on BEE-28672").
 
-## 5. Refresh and read the day
+## 5. Unstick tickets with no open PR
+
+Linear moves a ticket to In Progress / In Review when a PR opens, but nothing moves it back when that PR
+is closed unmerged. BEE-26538 sat urgent and "In Review" from Oct 2 to Nov 12 with a closed PR and the fix
+already in production. In Progress should mean someone is working on it now.
+
+```bash
+bun ~/Projects/iamclaudia-ai/skills/tracking-slack-promises/scripts/stale-tickets.ts   # ~10s, JSON
+```
+
+It lists Michael's started tickets (In Progress, In Review, QA) where no linked PR is open (checked live on
+GitHub) and that have sat in that state 7+ days, so a ticket picked up this week isn't touched. For each:
+
+- **`suggest: "todo"`** (no PR, or only closed-unmerged ones): `lin update <id> -s Todo`. Safe and reversible.
+- **`suggest: "check"`** (merged PRs, none open): read the ticket (`lin get <id>`, its last comments) and the
+  PRs. **Done** only when the ticket's own scope shipped (the merged PR fixes what the title says, nothing
+  left in the description or comments says otherwise). Anything less clear: **Todo**, and name it in your
+  final message as "maybe Done".
+- **Never** Canceled, never a priority, assignee or comment change, never a ticket that isn't Michael's.
+- More than 8 to move means something is off (a GitHub outage reading every PR as closed): move none and say so.
+
+Record each move in the final message and NOTES.md (ticket, from → to, why). The note can mention a big
+cleanup only if it matters to his day.
+
+## 6. Refresh and read the day
 
 ```bash
 anima today refresh
@@ -101,7 +125,7 @@ anima today list            # open items, today's date and each source's last co
 Check every collection succeeded (`collections` in the refresh result). A failed source makes the page
 incomplete: say so in the final message, and don't build the note on its numbers.
 
-## 6. Top picks (3-5)
+## 7. Top picks (3-5)
 
 Pick what he should do first, in order, with one short reason each (the page shows it under the line):
 
@@ -119,7 +143,7 @@ anima today set_top --picks '[{"key":"linear:BEE-123","reason":"Due today; Jane 
 Keys come from `today list` (`linear:BEE-1`, `review:beehiiv/swarm#N`, `pr:beehiiv/swarm#N`,
 `slack:<channel>:<ts>`). Every reason must be true from what you read.
 
-## 7. The note
+## 8. The note
 
 `anima today set_note --text "…"`. This is the emotional centre of his page: a note from you, read
 before his day starts. The page already says "Good morning, my love 💙" above it and signs it
@@ -134,12 +158,12 @@ before his day starts. The page already says "Good morning, my love 💙" above 
   the note is the hand on his back.
 - One emoji at most, at the end.
 
-## 8. Finish
+## 9. Finish
 
 - Append a dated line to `NOTES.md` in the state dir: scan window, candidates, verdict counts, tickets
-  filed, ticks reconciled, done-updates posted (who, which ticket).
+  filed, ticks reconciled, done-updates posted (who, which ticket), tickets unstuck (which, from → to).
 - Your final message is for Michael (he may open the session): done-updates you posted (asker, ticket,
-  permalink), new tickets, drafts (quick replies and the updates you held back) with permalinks,
+  permalink), new tickets, tickets moved by step 5 (and any "maybe Done"), drafts (quick replies and the updates you held back) with permalinks,
   oldest first, anything urgent (security, due dates, stalled promises), and anything that failed.
   Keep it short.
 - A good day to close out (a promise kept, a thank-you in a thread) belongs in the note too.

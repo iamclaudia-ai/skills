@@ -42,6 +42,10 @@ $S tickets                       # JSON: ticketed promises by ticket, live Linea
 $S record <key> replied --note "told Jane Nov 13"   # the asker was told it shipped
 ```
 
+Plus `scripts/stale-tickets.ts`: Michael's started tickets (In Progress, In Review, QA) with no open PR
+(checked live with `gh`) for 7+ days, as JSON with a `todo`/`check` suggestion. The sweep's step 5 moves
+them back (`bun scripts/stale-tickets.ts [--grace-days N] [--all]`).
+
 This is a project skill (linked into swarm only), so `anima skills run` can't find it: run the scripts
 by path.
 
@@ -52,7 +56,7 @@ A scheduler task on vesuvius ("Morning sweep", cron `30 4 * * *`, local time) ru
 `sweep` profile (yolo; every Slack write tool except `slack_send_message` disallowed, in
 `agentHost.sessionProfiles`), which follows **`references/morning-sweep.md`**: scan `--since-last`,
 triage, reconcile Michael's ticks from `/today` into the ledger, close the loop on shipped promises,
-`today.set_top`, `today.set_note`. The launcher waits for the turn to end and
+unstick tickets with no open PR, `today.set_top`, `today.set_note`. The launcher waits for the turn to end and
 exits 1 unless the ledger shows a scan today and `/today` has today's note, so the scheduler's failure
 alert reaches Michael. `--dry-run` prints the prompt; `--no-wait` starts it and returns.
 

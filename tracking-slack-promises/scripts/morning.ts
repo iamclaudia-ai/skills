@@ -37,13 +37,14 @@ const doneSince = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
 
 const prompt = [
   "Load the tracking-slack-promises skill and run the morning sweep exactly as",
-  `${RUNBOOK} describes, steps 1 to 7.`,
+  `${RUNBOOK} describes, steps 1 to 9.`,
   "",
   `Date: ${date}. State dir: ${STATE}.`,
   `For step 3 use --doneSince ${doneSince}.`,
   "",
   "You are running unattended; Michael is asleep. Never ask questions. The only Slack posts you make",
-  "are the done-updates step 4 allows; everything else is a draft in your final message.",
+  "are the done-updates step 4 allows; everything else is a draft in your final message. In Linear you",
+  "only file tickets (step 2) and move stale tickets' state (step 5).",
 ].join("\n");
 
 if (dryRun) {
