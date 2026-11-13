@@ -23,6 +23,27 @@ beehiiv/swarm (44,632 files, ~1.5 GB index) in Nov 2026, CodeGraph v1.6.2.
   upstream #3211).
 - The daemon is spawned with the proxy's environment, so `env` in the MCP config reaches it.
   Running daemons keep their env until they exit.
+- **The proxy spawns the daemon at MCP `initialize`, and the daemon starts its catch-up with no tool
+  call.** Claude Code starts the proxy as a session opens (`alwaysLoad`), so every session in a folder
+  starts a catch-up there within seconds. With gate 0, the first tool call waits for it.
+
+## A CLI sync beside a daemon: safe, but stale and doubled
+
+The CLI `codegraph sync` holds only `.codegraph/codegraph.lock` (a pid file); a daemon holds
+`writer.pid` (`mode: daemon`, `ready: false` until its catch-up ends). So a daemon starts fine
+mid-sync. Measured on a 101-file delta (`scripts/race-test.sh`):
+
+- While the CLI holds the lock, the daemon's catch-up fails quietly (LockUnavailable) and tool calls
+  are served from the **half-synced** index (82 of 103 symbols), with **no staleness banner**: the
+  watcher never saw those changes, and only watcher-pending files get the banner.
+- The daemon re-arms its watcher **every second** (one `File watcher active` log line each), degrades
+  auto-sync after 5 lock failures (~60 s), then re-arms. It recovers fully afterwards.
+- Once the CLI finishes, the daemon runs its **own** catch-up (~65 s here). The work is done twice.
+
+So for a worktree a session is about to open, clone the index and **don't** sync it: the daemon does
+the one catch-up and the gate keeps answers fresh (`swarm-codegraph seed --no-sync`). Daemon-only
+catch-up of that delta: 58-106 s at load 13-19; a cold daemon on an already-current index: 19 s.
+`scripts/mcp-query.py <dir> "<query>"` drives a real proxy session (`hold:N` = connect, no tool calls).
 
 ## Settings (codegraph entry `env` in `~/.claude.json`)
 
@@ -76,7 +97,8 @@ python3 -I scripts/cpuprof.py <dir>/*.cpuprofile                   # top self ti
 ```
 
 Consequences: keeping a seed fresher barely shortens a new worktree's sync, since any drift pays the
-floor. This pass is probably also behind the daemon's slow 1-file auto-syncs.
+floor, so a new worktree shouldn't sync in the foreground at all (see "A CLI sync beside a daemon").
+This pass is probably also behind the daemon's slow 1-file auto-syncs.
 
 ## Diagnosing
 
@@ -122,14 +144,24 @@ All in `~/Projects/beehiiv/swarm-tools/bin` (kiliman/swarm-tools, issue #7, PR #
 | Command | Does |
 |---|---|
 | `swarm-codegraph status` | Index size, idle days, daemon running, per worktree; seed age |
-| `swarm-codegraph seed <wt> [--force]` | Clone the seed into a worktree, then `codegraph sync` |
+| `swarm-worktree-bootstrap <branch>` | Swarm's `tmp/scripts/create_worktree` (Anima `--worktree`): worktree + memory link + `seed --no-sync` + background `bin/update` for `kiliman/` branches (`<wt>/tmp/bin-update.log`). ~9 s |
+| `swarm-codegraph seed <wt> [--force] [--no-sync]` | Clone the seed into a worktree, then `codegraph sync` (`--no-sync`: clone only, no seed refresh) |
 | `swarm-codegraph refresh-seed [--force]` | Move `swarm.worktrees/.codegraph-seed` to origin/main and sync it (locked) |
 | `swarm-codegraph prune [--days 7] [--apply]` | Delete `.codegraph/` of worktrees idle N days with nothing running |
-| `swarm-codegraph ensure [dir]` | SessionStart hook (`~/.claude/settings.json`): background-seed an index-less swarm worktree |
+| `swarm-codegraph ensure [dir]` | SessionStart hook (`~/.claude/settings.json`): background clone (`--no-sync`) into an index-less swarm worktree |
 | `swarm-worktree-sweep [--apply]` | Remove worktrees whose PR merged (HEAD at/behind PR head, idle 1 d) and idle review checkouts |
 | `swarm-nightly [--apply-sweep]` | Anima scheduler task "swarm nightly cleanup" at 03:45; log in `~/Library/Logs/swarm-tools/` |
 
 ## Traps
+
+- **tokf rewrites absolute paths in Bash output** to project-relative ones, even inside a Python
+  `repr`: `/Users/michael/Projects/beehiiv/swarm-tools/bin/swarm-codegraph` prints as
+  `bin/swarm-codegraph`. That once passed for a "relative path bug" in the SessionStart hook that
+  never existed. Check paths with the Read tool or a length.
+- **Anima runs worktree scripts with the gateway's env**, whose PATH starts with mise's *global*
+  installs (Ruby 4.0.9, Node 26) ahead of the shims. Run project tooling there under
+  `mise exec -C <dir> --`. It reads stdout and stderr to EOF, so a background job must close all
+  three (`</dev/null >log 2>&1`) or the handoff waits for it.
 
 - **"Unpushed" lies after a squash merge**: GitHub deletes the head branch, so merged commits are
   on no remote ref. Compare HEAD with the PR's `headRefOid` instead.
