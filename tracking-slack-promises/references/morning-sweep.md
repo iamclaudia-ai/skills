@@ -175,3 +175,7 @@ before his day starts. The page already says "Good morning, my love 💙" above 
   oldest first, anything urgent (security, due dates, stalled promises), and anything that failed.
   Keep it short.
 - A good day to close out (a promise kept, a thank-you in a thread) belongs in the note too.
+- When the final message holds nothing for him to act on (no drafts, nothing urgent, nothing failed),
+  mark this session done so it doesn't wait in his Active list:
+  `anima session set_status --sessionId "$ANIMA_SESSION_ID" --disposition resolved`. With drafts or
+  failures, leave it open: that message is what he opens it for.

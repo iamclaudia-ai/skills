@@ -53,3 +53,8 @@ anima today set_note --text "…"
 Append a dated line to `NOTES.md` in the state dir (`~/Projects/beehiiv/swarm/tmp/slack-promises/`):
 time, why it fired, what he finished, the new picks. Your final message (for Michael, if he opens the
 session) is the note and the picks, one line each.
+
+Then mark this session done, since everything it made is on the board already:
+`anima session set_status --sessionId "$ANIMA_SESSION_ID" --disposition resolved`. Otherwise every
+refresh sits in his Active list until he opens it to check. If something failed (a source he should
+know about, a pick you couldn't set), leave it open instead.
