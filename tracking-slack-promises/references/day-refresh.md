@@ -41,7 +41,8 @@ sentences under ~300 characters, warm and calm, one emoji at most at the end, no
 What's different: this note **starts from what he got done** since the last one, by name ("#34187 merged
 and BEE-28672 is off your plate"), then turns to what's next. It's the hand on his back halfway through
 the day, so make the progress feel real; he told us he's drowning, and finishing things is the way out.
-Don't repeat the morning note's wording.
+Don't repeat the morning note's wording. Keep the personal sentence the morning rules ask for:
+encouragement that fits what he just finished, in new words each time.
 
 ```bash
 anima today set_note --text "…"
