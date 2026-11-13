@@ -36,7 +36,7 @@ Use this skill when the user wants to schedule a future task, set a reminder, cr
 
 | Type       | Use Case                  | Lifecycle                              |
 | ---------- | ------------------------- | -------------------------------------- |
-| `once`     | "Remind me in 10 minutes" | Fires at a specific time, auto-deletes |
+| `once`     | "Remind me in 10 minutes" | Fires once, then stays listed disabled |
 | `interval` | "Check every 30 seconds"  | Repeats every N seconds                |
 | `cron`     | "Every weekday at 9 AM"   | Long-lived, persistent, cron schedule  |
 
@@ -339,7 +339,7 @@ The scheduler has a web GUI at `/scheduler` with:
 ## Notes
 
 - Tasks are **durable** — stored in SQLite, survive restarts
-- One-shot tasks auto-delete after firing
+- One-shot tasks are **disabled, not deleted**, after firing (history stays inspectable). `list_tasks` still shows them; filter on `enabled`, and `cancel_task` removes one for good
 - Interval/cron tasks update `fireAt` to the next occurrence
 - Check loop runs every **5 seconds** — tasks may fire up to 5s late
 - Execution history auto-prunes to `keepHistory` limit
