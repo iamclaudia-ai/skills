@@ -72,7 +72,11 @@ if (import.meta.main) {
   const dryRun = args.includes("--dry-run");
   const force = args.includes("--force");
 
-  const board = anima(["today", "list"]) as ListResponse;
+  // `today list` returns only open items unless asked: finished picks would vanish, and "all picks
+  // done" could never be seen (caught on the first end-to-end run).
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const board = anima(["today", "list", "--doneSince", midnight.toISOString()]) as ListResponse;
   const picks = board.items
     .filter((i) => i.topDate === board.date)
     .sort((a, b) => (a.topRank ?? 50) - (b.topRank ?? 50));
@@ -88,7 +92,7 @@ if (import.meta.main) {
     `${RUNBOOK} describes.`,
     "",
     `Date: ${board.date}, ${time}. Why now: ${force && !verdict.refresh ? "a manual run" : verdict.reason}.`,
-    "This morning's picks:",
+    "Current top picks (the morning's, or the last refresh's):",
     ...picks.map((p) => `- ${p.key} (${p.status}): ${p.title}`),
     "",
     "You are running unattended. Never ask questions, never post in Slack, never change Linear.",
