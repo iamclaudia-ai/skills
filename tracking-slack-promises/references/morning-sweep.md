@@ -134,7 +134,8 @@ Pick what he should do first, in order, with one short reason each (the page sho
   (`meta.actionable`: ready to merge, conflicts, failing checks, changes requested, open comments,
   "your turn"). The state comes from `cpra`, so `stateLabel` is the reason; never pick a PR that only
   waits on someone else.
-- Started or urgent/high-priority tickets, before untouched Todo ones.
+- Tickets and promises he can start (Todo, Backlog, Triage): due soon or urgent/high first. A started
+  one (In Progress, In Review) is carried by its PR: pick the PR (`pr:` key), never the ticket.
 
 ```bash
 anima today set_top --picks '[{"key":"linear:BEE-123","reason":"Due today; Jane is waiting on it"}]'
