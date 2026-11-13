@@ -58,6 +58,26 @@ Slow 1-2 file auto-syncs (2-36 s) cluster in the first minutes after a daemon st
 contending with the background catch-up. A real restack is inherent work either way
 (`Auto-synced 222 file(s) in 21493ms`).
 
+## Callback synthesis: the ~27 s floor on every non-trivial sync
+
+On swarm, `codegraph sync` costs 4 s with nothing changed but **37 s with 12 files changed** (206 files:
+44 s, 886 files: 70 s). The floor is `refreshSynthesis` → `synthesizeCallbackEdges`. It is a whole-repo
+pass that links Sidekiq dispatch, object registries and RN events, and it re-reads source files across
+the repo. A CPU profile put 29 s in `readFileUtf8` under `objectRegistryEdges`, `collectInputs`,
+`rnEventEdges` and `sidekiqDispatchEdges`. It runs when `synthesis_pending` is set, when any
+reference is still pending, or when a changed file touches synthesis inputs (most Ruby does). No
+env var skips it. `CODEGRAPH_SYNTH_TIMINGS=1` prints phase timings but leaves this pass out (it
+reports `callback-synthesis: 0ms`), so profile instead:
+
+```bash
+NODE_OPTIONS="--cpu-prof --cpu-prof-dir=<dir>" codegraph sync     # or swarm-codegraph seed <wt> --force
+python3 -I scripts/cpuprof.py <dir>/*.cpuprofile                   # top self time + readFileUtf8 callers
+<cmd> 2>&1 | python3 -I scripts/ts.py                              # seconds-since-start on each output line
+```
+
+Consequences: keeping a seed fresher barely shortens a new worktree's sync, since any drift pays the
+floor. This pass is probably also behind the daemon's slow 1-file auto-syncs.
+
 ## Diagnosing
 
 - `<root>/.codegraph/daemon.log`: start lines (with the idle timeout), catch-up results, every
