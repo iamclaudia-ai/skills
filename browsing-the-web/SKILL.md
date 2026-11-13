@@ -20,8 +20,11 @@ When the browsing task is finished, before reporting back:
 
 ```bash
 dev-browser stop      # stops the daemon and every browser it launched
-dev-browser status    # confirm it's gone
+pgrep -fl dev-browser || echo gone   # confirm it's gone
 ```
+
+Don't confirm with `dev-browser status`: it starts a fresh daemon to answer (seen Nov 12: "up 0s" right
+after a stop), which leaves exactly the leak this section is about.
 
 Skip the stop only if another session is actively using it right now (check `dev-browser browsers`). `stop` never closes Chrome you attached to with `--connect`.
 
@@ -76,9 +79,8 @@ EOF
 ```bash
 dev-browser <<'EOF'
 const page = await browser.getPage("main");
-const buf = await page.screenshot();
-const path = await saveScreenshot(buf, "debug.png");
-console.log(path);
+const shot = await page.shot({ name: "debug.png" });   // saved under ~/.dev-browser/v1/tmp/
+console.log(shot.path);
 EOF
 ```
 
@@ -104,7 +106,7 @@ Reconnect to the same page name, take a screenshot, and log the URL/title:
 ```bash
 dev-browser <<'EOF'
 const page = await browser.getPage("checkout");
-const path = await saveScreenshot(await page.screenshot(), "debug.png");
+const path = (await page.shot({ name: "debug.png" })).path;
 console.log(JSON.stringify({
   screenshot: path,
   url: page.url(),
@@ -129,7 +131,10 @@ EOF
 - page.press(selector, key) Press a key such as Enter or Tab
 - page.waitForSelector(selector) Wait for an element to appear
 - page.waitForURL(url) Wait for navigation to a URL
-- page.screenshot() Capture a screenshot buffer; save it with saveScreenshot(...)
+- page.shot({ name?, fullPage?, clip?, maxEdge? }) Save a screenshot; returns { path, width, height, scale }.
+  There is no `saveScreenshot` helper. Copy the file into the project's `tmp/` to keep it.
+- page.setViewport({ width, height }) Resize (the page is Puppeteer-style: no `setViewportSize`,
+  no `waitForTimeout`; sleep with `await new Promise(r => setTimeout(r, ms))`). Phone = 390x844.
 - page.$$eval(selector, fn) Run a function on all matching elements
 - page.$eval(selector, fn) Run a function on the first matching element
 - page.evaluate(fn) Run JavaScript in the page context (plain JS only)

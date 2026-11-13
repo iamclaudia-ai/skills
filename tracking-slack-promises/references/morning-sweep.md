@@ -106,8 +106,10 @@ incomplete: say so in the final message, and don't build the note on its numbers
 Pick what he should do first, in order, with one short reason each (the page shows it under the line):
 
 - Overdue or due today, and promises someone has been waiting on longest.
-- PR reviews that block a teammate (oldest request first) and his own PRs that are approved or have
-  changes requested.
+- PR reviews that block a teammate (oldest request first) and his own PRs a session can act on
+  (`meta.actionable`: ready to merge, conflicts, failing checks, changes requested, open comments,
+  "your turn"). The state comes from `cpra`, so `stateLabel` is the reason; never pick a PR that only
+  waits on someone else.
 - Started or urgent/high-priority tickets, before untouched Todo ones.
 
 ```bash
