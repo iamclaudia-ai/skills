@@ -71,7 +71,9 @@ $S tickets > ~/Projects/beehiiv/swarm/tmp/slack-promises/tickets.json   # ticket
 For each ticket in state type **`completed`**:
 
 1. **Check it really shipped.** Read the ticket and its PRs (`gh pr view <url> --json state,mergedAt`).
-   Merged is "merged". Say "live" only if you checked that it's deployed. If you can't tell what
+   Merged is "merged". Say "live" only if you checked that it's deployed: for swarm, the latest
+   `prod` deployment (`gh api "repos/beehiiv/swarm/deployments?environment=prod&per_page=1" -q '.[0].sha'`;
+   not `production`, which stopped in April) must contain the merge (`git merge-base --is-ancestor`). If you can't tell what
    shipped, draft instead (step 9) and leave the ledger alone.
 2. **Read each thread's tail** (`slack_read_thread`; for a DM, `slack_read_channel`). If Michael or
    someone already said it's done, don't post: `$S record <key> done --note "already closed out in thread"`.
