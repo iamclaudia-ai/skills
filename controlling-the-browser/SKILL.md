@@ -302,6 +302,23 @@ If an expression fails, the error comes from JailJS and names the AST node it
 choked on (`Unhandled node type: X`). That means the construct reached the
 interpreter untranspiled — worth reporting.
 
+## Phone-Width Screenshots (no window resize)
+
+DOMINATRIX has no resize method, and the tab is as wide as Michael's window. For a ~390px phone
+shot of a same-origin page, overlay an iframe of the page itself (cookies and storage are shared,
+so it is signed in), screenshot, then remove it:
+
+```bash
+anima dominatrix exec --script "const o=document.createElement('div');o.id='phone-frame';o.style.cssText='position:fixed;inset:0;z-index:99999;background:#e5e7eb;display:flex;align-items:flex-start;justify-content:center;padding-top:8px';const f=document.createElement('iframe');f.src=window.location.href;f.style.cssText='width:390px;height:844px;border:1px solid #9ca3af;background:white';o.appendChild(f);document.body.appendChild(o);"
+sleep 6   # let the iframe's app load
+anima dominatrix screenshot --out ./tmp/phone.png
+anima dominatrix exec --script "document.getElementById('phone-frame').remove()"
+```
+
+The iframe runs the app's own media queries at 390px. It stays live, so a later screenshot shows
+what the page did since (a timer, a countdown). It only works where the page allows framing
+itself (Anima does; sites that send `X-Frame-Options: DENY` don't).
+
 ## React Source Mapping
 
 Map DOM elements back to React component source files. Works on any React dev app — no additional libraries needed.
