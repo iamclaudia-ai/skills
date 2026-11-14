@@ -28,6 +28,27 @@ after a stop), which leaves exactly the leak this section is about.
 
 Skip the stop only if another session is actively using it right now (check `dev-browser browsers`). `stop` never closes Chrome you attached to with `--connect`.
 
+## Phone screenshots with a real touch screen (Anima's web UI, or any site)
+
+Michael's real Chrome (DOMINATRIX) can't pretend to be a phone: CSS like `pointer-coarse:` and
+`@media (hover: hover)` still sees a mouse. Headless dev-browser can (Nov 13, 2026, #177):
+
+```js
+const page = await browser.getPage("phone");
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+// → matchMedia("(pointer: coarse)") true, "(hover: hover)" false. Use element.tap() for touch.
+```
+
+- **Anima's login:** go to `https://anima.kiliman.dev/` once, then
+  `localStorage.setItem("anima_token", "<token>")` and navigate to the real page. Get the token with
+  `anima token show` and put it into the script without echoing it.
+- **Put the script in a file and `dev-browser run FILE`.** A heredoc with `[...spread]` or `$$` once tripped
+  Claude Code's rm safety check ("could not be checked"), which refuses the whole command.
+- Screenshot to an absolute path (`page.screenshot({ path })`), then Read it. Check
+  `document.documentElement.scrollWidth === 390` for horizontal scroll.
+- Tailwind 4 puts `group-hover:*` inside `@media (hover: hover)`, so on a phone those rules never apply;
+  `pointer-coarse:*` rules come later in the CSS.
+
 ## LLM USAGE GUIDE:
 
 Write small, focused scripts. Each script should do ONE thing: navigate, click, fill, or check.
