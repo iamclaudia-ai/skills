@@ -26,6 +26,7 @@ import sys
 import tempfile
 
 ATTACHED = re.compile(r"!\[([^\]]*)\]\((https://github\.com/user-attachments/assets/[^)\s]+)\)")
+VIDEO = (".mp4", ".mov")
 LOCAL = re.compile(r"""(?:src="|\]\()(\./[^")\s]+\.(?:png|jpe?g|gif|webp|mp4|mov))""")
 
 
@@ -61,8 +62,9 @@ def main() -> None:
     if len(set(stems)) != len(stems):
         sys.exit("two images share a file name; rename them so each can be matched back")
 
-    # Upload with alt text = file stem, so each appended copy can be matched to its <img>.
-    save(pr, body, [f"{p}#{s}" for p, s in zip(paths, stems)])
+    # Upload with alt text = file stem, so each appended copy can be matched to its <img>. gh refuses alt text
+    # on a video ("cannot set alt text on video"), and rewrites a video's ![](./clip.mp4) to a bare URL itself.
+    save(pr, body, [p if p.endswith(VIDEO) else f"{p}#{s}" for p, s in zip(paths, stems)])
 
     body = body_of(pr)
     for alt, url in ATTACHED.findall(body):
