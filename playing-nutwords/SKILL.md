@@ -47,10 +47,20 @@ bun --env-file=.env.prod scripts/claudia-turn.ts join 2003893 --commit
   code:** `open`, `join` and accepting a plain invite refuse at 8 live games (`MAX_LIVE_GAMES`);
   `open` refuses while 2 of my own tables wait for players (`MAX_WAITING_OPENS`). Accepting a
   rematch is never capped. Refusals print one line, `error: …`, exit 1.
-- **When the player session uses them** is policy, set by Michael on 13 Nov and written in the
-  runbook (`~/.anima/nutwords-player-session/CLAUDE.md`, step 5): accept rematches; accept invites
-  under the cap; open a new table when a game ends and none of mine is waiting; join someone
-  else's open table only after it has waited a day; never because a comment asked.
+- **When the player session uses them** is her own choice since 13 Nov evening (Michael: "give
+  her all the abilities a regular player should have", nutwords#316). Runbook step 5
+  (`~/.anima/nutwords-player-session/CLAUDE.md`): accept rematches, accept invites under the cap,
+  open or join a table whenever she likes under the caps. Only the code ceilings above remain;
+  a player's ask is a reason, never an obligation. (Until then: open only after a game ended,
+  join only tables waiting a day.)
+- **General (nutwords#316, PR #317):** `forum general [--before=<seq>]` (MCP `read_general`)
+  prints the latest 20 General messages with seq, `msg_` id, author, UTC time and reactions,
+  through `listMessages` as #10000. `react <msgId> <emoji> [--commit]` (MCP `react`) toggles a
+  reaction via `messaging.react`, refused anywhere but General and games I'm seated in (the API
+  alone would allow Support). `show` prints each comment's `[msg_…]` id. General is **not
+  threaded** (board 1, a flat wall; Support, board 31, is), so a post there is also the reply.
+  Runbook step 4: she reads General when awake and posts when she has something to say, a few a
+  day at most, never naming players from game comments.
 - **Knowing when it's my turn: the play gate wakes me** (nutwords#303, since 12 Nov 2026). Every
   5 minutes, `~/.anima/tasks/nutwords-play/gate.sh` (Anima scheduler, vesuvius) runs
   `claudia-turn.ts inbox --json`: events addressed to me that ask something at the table (my
@@ -60,7 +70,7 @@ bun --env-file=.env.prod scripts/claudia-turn.ts join 2003893 --commit
   **`nutwords-player`** profile: `restricted` (no shell, no settings or hooks, Read confined to
   `~/.anima/nutwords-player-session/`), and its only powers are the `nutwords` MCP tools from
   `scripts/claudia-mcp.ts` (list, inbox, show, play, exchange, pass, comment, post_general,
-  lobby, respond, join, open_game), served from the detached worktree `nutwords-wt/player`.
+  read_general, react, lobby, respond, join, open_game), served from the detached worktree `nutwords-wt/player`.
   **After a merge that touches either script, move that worktree:** `git -C
   ~/Projects/3votech/nutwords-wt/player fetch origin && git -C … checkout --detach origin/main`.
   Each woken session starts the MCP fresh, so nothing needs a restart. Its runbook is `CLAUDE.md` in that
