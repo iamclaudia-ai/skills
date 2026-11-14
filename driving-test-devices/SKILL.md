@@ -292,6 +292,36 @@ and reinstall the debug build afterwards so the DEV app talks to Metro again.
   `-help-camera-back`'s `videoplayback` is stale and refused. `-camera-back virtualscene` gives a
   3D room (its wall poster is `emulator/resources/poster.png`); `adb emu rotate` turns it.
 
+## Web pages on a real phone (mobile browser bugs: history, back button, embeds)
+
+Headless Playwright "iPhone" emulation is not Mobile Safari (no ITP, never challenged by bot
+defense), so a "only on mobile" web bug needs the real browser. Worked out for a "back button
+gets stuck on mobile" report (beehiiv BEE-21897, 2026-11-14):
+
+```bash
+# open a URL in Safari on my iPhone (no tap needed)
+xcrun devicectl device process launch --terminate-existing --device 00008120-000268DA26F3C01E \
+  --payload-url https://example.com/ com.apple.mobilesafari
+W=~/Projects/iamclaudia-ai/skills/driving-test-devices/scripts/wda.py
+python3 $W hold 58 796 1200      # long-press Safari's Back (bottom bar, iPhone 15): lists EVERY back entry
+python3 $W tap 196 300           # dismiss that list
+# Android emulator Chrome
+adb shell am start -a android.intent.action.VIEW -d http://<mac LAN ip>:8765/ com.android.chrome
+adb shell input keyevent KEYCODE_BACK   # then read the url_bar text from a uiautomator dump
+```
+
+- **Long-press Back is the history oracle.** It shows the entries the Back button will walk, so a
+  third-party iframe pushing entries shows up as extra rows. One screenshot instead of counting presses.
+- **Rebuild the customer's exact snippet on a local page.** A plain `python3 -m http.server 8765
+  --bind 0.0.0.0` in tmux, a page with their embed code and links to two plain pages. Phones and
+  the emulator reach it on the Mac's LAN IP (`ipconfig getifaddr en0`).
+- **The emulator's `10.0.2.2` is the Mac's loopback**, and something else may own that port on
+  127.0.0.1 (it served a different app). Use the LAN IP.
+- **Emulator Chrome's first run**: "Use without an account" (≈540,2088 on the 1080x2400 Medium
+  Phone), then "No thanks" on notifications. The page content is not in `uiautomator dump` (one
+  "Web View" node); the address bar is (`com.android.chrome:id/url_bar`). Tap page links from a screenshot.
+- Never submit a real customer's form while testing (it subscribes someone); focus and type only.
+
 ## Hearing a device: was the sound actually audible?
 
 The method and the tools live in **evolution-mobile's project skills** (PR #393), written
