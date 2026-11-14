@@ -128,9 +128,9 @@ newest release of the same major, listing any **security** releases in
 between. Find out how each runtime is installed (`which -a node`: mise, brew,
 nvm) before upgrading. Upgrade with the manager that owns it
 (`bun upgrade`, `mise use -g node@<ver>`). Look at what else depends on a brew
-Node before bumping it. On vesuvius, brew `node@22` backs code-server
-(Michael's only remote terminal), and dylib bumps have crash-looped it, so
-leave that one to Michael.
+Node before bumping it (`brew uses --installed <node keg>`): a dylib bump once
+crash-looped a service launched from brew's `node@22` (code-server, retired
+Nov 13, 2026).
 
 ### 8. Verify, then ship
 
@@ -151,14 +151,14 @@ leave that one to Michael.
 `anima skills run auditing-dependencies brew [--out <dir>] [--no-update]` scans
 this machine read-only. It joins `brew vulns` (built into Homebrew 7, OSV.dev)
 with `brew outdated`, flags exposure (running brew services, plus any process
-launched from a keg, which is how code-server's node@22 shows up), checks Node
+launched from a keg, such as a service running on a brew Node), checks Node
 kegs against Node security releases, lists what OSV can't cover, and compares
 outdated casks with the version actually on disk. The weekly sweep runs it
 and starts a read-only planning session when something is actionable.
 
 **Coverage gaps.** `brew vulns` skips casks, formulae from untrusted taps, and
 formulae without a git source it understands (node, python, sqlite, gnupg,
-openssl, code-server...). For those, "outdated" is the signal. Trust a
+openssl...). For those, "outdated" is the signal. Trust a
 third-party formula you use with `brew trust --formula <tap>/<formula>`
 (narrower than trusting the whole tap). Untrusted formulae are not upgraded
 either.
@@ -181,8 +181,7 @@ matter only when they parse untrusted files.
 4. `HOMEBREW_NO_INSTALL_CLEANUP=1` keeps the old kegs for rollback.
 5. A process started from a `Cellar/<name>/<version>` path keeps running the
    old version until restarted: `brew services restart <name>`, or
-   `launchctl kickstart -k gui/$(id -u)/<label>` (code-server is
-   `com.anima.code-server`). Validate configs first
+   `launchctl kickstart -k gui/$(id -u)/<label>`. Validate configs first
    (`caddy validate --config /opt/homebrew/etc/Caddyfile`), then check the
    sites respond.
 6. Casks installed from a `.pkg` (git-credential-manager) need sudo, which an
@@ -191,7 +190,8 @@ matter only when they parse untrusted files.
    uninstall it. Remote-access tools and tunnels that aren't in use should be
    uninstalled, not upgraded.
 7. The full `brew upgrade` (100+ formulae, openssl moves) belongs in a session
-   where Michael is at the machine, because code-server is his only way back in.
+   where Michael is at the machine, so a broken front door (Caddy, a tunnel)
+   gets fixed on the spot.
    Save `brew list --versions` and `brew bundle dump` to `~/.anima/backups/`
    first. Run it with `--formula` (pkg casks would stall on a sudo prompt) in
    its own tmux session, teeing to a log. tmux runs it under zsh, so the exit

@@ -84,7 +84,7 @@ const services = json<Array<{ name: string; status: string }>>(["services", "lis
 const runningServices = new Set(services.filter((s) => s.status === "started").map((s) => s.name));
 
 // Any running process launched from a keg path counts as exposure
-// (code-server runs on node@22 without being a brew service).
+// (a launchd job running a brew Node isn't a brew service).
 const inUse = new Set<string>();
 const ps = Bun.spawnSync(["ps", "-axo", "command="]).stdout.toString();
 for (const match of ps.matchAll(/\/opt\/homebrew\/(?:Cellar|opt)\/([^/\s]+)\//g)) inUse.add(match[1]);

@@ -39,8 +39,8 @@ team), `owners`, `activeWithinDays`, `include`/`skip` (absolute paths),
 `auditing-dependencies brew` on this machine, writes `homebrew.md`/`.json`,
 adds a Homebrew section to `SUMMARY.md`, and when something is actionable
 starts a read-only "Deps sweep · homebrew" session that writes Michael an
-upgrade plan. It never upgrades brew itself: that is machine-wide, and
-code-server (his only remote terminal) runs on brew node@22.
+upgrade plan. It never upgrades brew itself: that is machine-wide (Caddy, the
+front door for the `*.kiliman.dev` sites, runs from brew too).
 
 A repo is swept when its GitHub origin belongs to one of `owners`, it is not
 a fork or archived, and it had a commit within `activeWithinDays`. PRs need
