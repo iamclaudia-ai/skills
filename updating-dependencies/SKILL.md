@@ -184,21 +184,14 @@ versions. Verify, and note the refresh in a PR comment.
   `ghstack-pr` git config the worktree's `submit` wrote, which `add` reads
   (gh-stack ≥ 0.19.6). A `"pr": null` there breaks the landing: `merge --base`
   refuses with "has no PR", and `sync` can't see the safe batch merge, so it
-  replays its squashed commits. If you see one, say so in the final message:
-  the fix is `gh-stack update-prs` run from a branch of that stack, which you
-  must not check out in his working copy. **Never try to repair it with
-  `gh-stack delete --keep-branch` + `add`** in his checkout: `delete` wipes the
-  branch's `ghstack-pr` config, `add` drops PR numbers that `update-prs`
-  adopted elsewhere, and every cycle leaves an empty stack plus a `-2`/`-3`
-  suffixed copy behind (gh-stack 0.19.9, kiliman/gh-stack#67; anima sweep
-  2026-11-08). Report the `null` and move on: step 6 lands from a fresh
-  worktree, where `add` + `update-prs` adopt the numbers anyway. `submit`
-  can also miss writing `ghstack-pr` for the last sibling it creates, so check
-  `git config --get-regexp 'branch\.deps/.*ghstack-pr'` before registering.
-  Even with that config present, `add` can still register the last sibling
-  as `"pr": null` (nutwords sweep 2026-11-08: `ghstack-pr 270` was set and
-  #270 still came up null after `add`). Same treatment: report it, don't
-  repair it in his checkout.
+  replays its squashed commits. If you see one, fix it in place with
+  `gh-stack update-prs --stack <name>` (gh-stack ≥ 0.19.13): it looks the PRs
+  up on GitHub and needs nothing checked out, so it's safe in his checkout.
+  Since 0.19.13 a branch keeps its `ghstack-pr` when it leaves a stack
+  (`delete --keep-branch`, a removed worktree), `add` picks it back up, and
+  `submit` records each PR the moment it creates it, so a `null` should be
+  rare. Before 0.19.13 all of these lost PR numbers (kiliman/gh-stack#67;
+  anima and nutwords sweeps 2026-11-08).
 - **How to land it**, for the final message: one line saying the PRs land one
   at a time, safe batch first, and that you can do it when he asks (step 6).
   If he merges on GitHub himself, `gh-stack sync` afterwards moves the
@@ -224,7 +217,7 @@ version, stop and say so rather than landing by hand.
 2. **Work in a fresh worktree**, never Michael's checkout: `git -C <repo>
    worktree add <repo>.worktrees/land-<date> <safe branch>`, then `gh-stack
    add <b>` for each breaking branch. `gh-stack stacks --json` must show every
-   PR number; `gh-stack update-prs` adopts any `"pr": null`. A stack an older
+   PR number; `gh-stack update-prs --stack <name>` adopts any `"pr": null`. A stack an older
    gh-stack already wedged ("exactly one root branch; found N") is repaired by
    `gh-stack doctor`, which splits it.
 3. **Land the safe batch.** On the safe branch, `gh-stack merge --base`. It
@@ -266,8 +259,10 @@ version, stop and say so rather than landing by hand.
 6. **Clean up.**
    - Remove the worktree.
    - In Michael's checkout, drop the stack registered at step 5 with
-     `gh-stack delete --keep-branch`, leaves before the batch. This is
-     metadata only.
+     `gh-stack archive <name>` (gh-stack ≥ 0.19.13; metadata only, reversible
+     with `--restore`). `delete --keep-branch` on every branch also works: the
+     last delete archives the empty stack. `gh-stack doctor` archives any
+     empty stacks older sweeps left behind.
    - Delete the local `deps/*` branches with the `deleting-local-branches`
      skill, and their remote branches with `git push origin --delete` (merged
      PRs only).
